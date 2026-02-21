@@ -3199,14 +3199,15 @@ function drawEditorLine(editor, x1, y1, x2, y2) {
 }
 
 function floodFillEditor(editor, sx, sy) {
-  if (sx < 0 || sx >= editor.width || sy < 0 || sy >= editor.height) return;
+  if (sx < 0 || sx >= editor.width || sy < 0 || sy >= editor.height) return false;
 
   const target = editor.indices[sy * editor.width + sx];
   const replacement = editor.tool === 'eraser' ? 0 : editor.colorIndex;
-  if (target === replacement) return;
+  if (target === replacement) return false;
 
   const stack = [[sx, sy]];
   const visited = new Uint8Array(editor.width * editor.height);
+  let changed = false;
 
   while (stack.length > 0) {
     const [x, y] = stack.pop();
@@ -3216,12 +3217,15 @@ function floodFillEditor(editor, sx, sy) {
 
     if (editor.indices[idx] !== target) continue;
     editor.indices[idx] = replacement;
+    changed = true;
 
     if (x > 0) stack.push([x - 1, y]);
     if (x < editor.width - 1) stack.push([x + 1, y]);
     if (y > 0) stack.push([x, y - 1]);
     if (y < editor.height - 1) stack.push([x, y + 1]);
   }
+
+  return changed;
 }
 
 function editorCoordFromPointer(clientX, clientY) {
@@ -3438,6 +3442,7 @@ function onEditorPointerDown(event) {
   const isPan = event.button === 1 || (event.button === 0 && runtime.editorSpacePan);
   if (isPan) {
     event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
     editor.isPanning = true;
     editor.panStart = {
       x: event.clientX,
@@ -3467,6 +3472,10 @@ function onEditorPointerDown(event) {
   if (!p) return;
 
   if (editor.tool === 'fill') {
+    if (p.x < 0 || p.x >= editor.width || p.y < 0 || p.y >= editor.height) return;
+    const idx = p.y * editor.width + p.x;
+    const replacement = editor.tool === 'eraser' ? 0 : editor.colorIndex;
+    if (editor.indices[idx] === replacement) return;
     pushEditorUndo(editor);
     floodFillEditor(editor, p.x, p.y);
     renderEditorCanvas();
@@ -3507,9 +3516,12 @@ function onEditorPointerMove(event) {
   }
 }
 
-function onEditorPointerUp() {
+function onEditorPointerUp(event) {
   const editor = runtime.editor;
   if (!editor) return;
+  if (event?.currentTarget?.hasPointerCapture?.(event.pointerId)) {
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
   editor.isDrawing = false;
   editor.isPanning = false;
   editor.panStart = null;
@@ -3540,6 +3552,8 @@ function onEditorTouchStart(event) {
   if (event.touches.length !== 2) return;
 
   event.preventDefault();
+  editor.isPanning = false;
+  editor.panStart = null;
   editor.isDrawing = false;
   editor.last = null;
   editor.pinch = {
@@ -3871,6 +3885,7 @@ function bindEvents() {
   r.editorCanvas.addEventListener('pointermove', onEditorPointerMove);
   r.editorCanvas.addEventListener('pointerup', onEditorPointerUp);
   r.editorCanvas.addEventListener('pointerleave', onEditorPointerUp);
+  r.editorCanvas.addEventListener('pointercancel', onEditorPointerUp);
   r.editorCanvas.addEventListener('wheel', onEditorWheel, { passive: false });
   r.editorCanvas.addEventListener('touchstart', onEditorTouchStart, { passive: false });
   r.editorCanvas.addEventListener('touchmove', onEditorTouchMove, { passive: false });
@@ -3909,6 +3924,10 @@ function bindEvents() {
   window.addEventListener('keyup', (event) => {
     if (!state.isEditorOpen || !runtime.editor) return;
     if (event.key === ' ') runtime.editorSpacePan = false;
+  });
+
+  window.addEventListener('blur', () => {
+    runtime.editorSpacePan = false;
   });
 }
 
