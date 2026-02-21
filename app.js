@@ -1274,6 +1274,31 @@ function applyAdjustments(ctx, width, height, adjustments = state.adjustments) {
   ctx.putImageData(imageData, 0, 0);
 }
 
+function applyPaletteLock(ctx, width, height, palette) {
+  if (!palette || palette.length === 0) return;
+
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const cache = new Map();
+
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+
+    const key = colorToInt(data[i], data[i + 1], data[i + 2]);
+    let mapped = cache.get(key);
+    if (!mapped) {
+      mapped = nearestColor(data[i], data[i + 1], data[i + 2], palette);
+      cache.set(key, mapped);
+    }
+
+    data[i] = mapped[0];
+    data[i + 1] = mapped[1];
+    data[i + 2] = mapped[2];
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
 function drawPixelFrame(ctx, pixels, sliceRaw, x, y, width, height, scaleOverride) {
   const h = pixels.length;
   const w = pixels[0].length;
@@ -2482,6 +2507,7 @@ function applyEffectsFrame(frameIndex = state.frameTick) {
   if (state.effects.ditherFade) applyDitherFade(ctx, canvas.width, canvas.height, frameIndex);
   if (state.effects.glitch) applyGlitch(ctx, canvas.width, canvas.height, state.pixelSize);
   if (hasActiveAdjustments()) applyAdjustments(ctx, canvas.width, canvas.height, state.adjustments);
+  if (palette) applyPaletteLock(ctx, canvas.width, canvas.height, palette);
 }
 
 function stopFxLoop() {
@@ -2920,6 +2946,7 @@ function renderPngCanvas(
   const preview = runtime.refs.previewCanvas;
   if (!preview || !preview.width || !preview.height) return null;
   const scale = Math.max(1, Math.min(4, Math.round(exportScale || 1)));
+  const palette = runtime.gridData?.colors;
   const logicalW = runtime.gridData?.width || preview.width;
   const logicalH = runtime.gridData?.height || preview.height;
 
@@ -2953,6 +2980,7 @@ function renderPngCanvas(
     dialogName: state.dialogName,
     dialogText: state.dialogText,
   });
+  if (palette) applyPaletteLock(ctx, canvas.width, canvas.height, palette);
 
   return canvas;
 }
