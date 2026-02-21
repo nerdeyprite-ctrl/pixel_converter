@@ -302,6 +302,9 @@ const I18N = {
     editorHintPc:
       '右クリック: スポイト / Space+ドラッグ: 移動 / ホイール: 拡縮',
     editorHintMobile: '1本指: 描画 / 2本指: 移動・拡縮',
+    editorHelpPc:
+      '左クリック: 描画\n右クリック: スポイト（色を拾う）\nSpace+ドラッグ: キャンバス移動\n中ボタンドラッグ: キャンバス移動\nホイール: ズーム',
+    editorHelpMobile: '1本指: 描画\n2本指: 移動・拡大縮小',
     namePh: 'キャラ名（任意）',
     textPh: 'セリフを入力...',
     ready: 'Ready',
@@ -358,6 +361,9 @@ const I18N = {
     editorHintPc:
       'Right-click: Eyedropper / Space+Drag: Pan / Wheel: Zoom',
     editorHintMobile: '1 finger: Draw / 2 fingers: Pan & Zoom',
+    editorHelpPc:
+      'Left click: Draw\nRight click: Eyedropper\nSpace+Drag: Pan canvas\nMiddle button drag: Pan canvas\nWheel: Zoom',
+    editorHelpMobile: '1 finger: Draw\n2 fingers: Pan & Zoom',
     namePh: 'Character name (optional)',
     textPh: 'Enter dialogue...',
     ready: 'Ready',
@@ -414,6 +420,9 @@ const I18N = {
     editorHintPc:
       '우클릭: 스포이트 / Space+드래그: 이동 / 휠: 확대/축소',
     editorHintMobile: '1손가락: 그리기 / 2손가락: 이동·확대/축소',
+    editorHelpPc:
+      '좌클릭: 그리기\n우클릭: 스포이트\nSpace+드래그: 캔버스 이동\n가운데 버튼 드래그: 캔버스 이동\n휠: 확대/축소',
+    editorHelpMobile: '1손가락: 그리기\n2손가락: 이동·확대/축소',
     namePh: '캐릭터 이름 (선택)',
     textPh: '대사를 입력...',
     ready: 'Ready',
@@ -855,6 +864,8 @@ const BAYER4 = [
   [15, 7, 13, 5],
 ];
 
+const EDITOR_ZOOM_LEVELS = [1, 2, 4, 8, 16, 24, 32];
+
 const state = {
   imageUrl: null,
   sourceImage: null,
@@ -901,6 +912,7 @@ const runtime = {
   langClickAway: null,
   audioContext: null,
   editor: null,
+  editorSpacePan: false,
 };
 
 function getDefaultLang() {
@@ -1517,9 +1529,11 @@ function buildBaseLayout() {
         <div class="editor-bottom">
           <span id="editorHint"></span>
           <div class="btn-row" style="width:auto">
+            <button id="editorHelpBtn" class="btn btn-small">?</button>
             <button id="editorSave" class="btn btn-small"></button>
             <button id="editorCancel" class="btn btn-small"></button>
           </div>
+          <div id="editorHelpPop" class="editor-help-pop hidden"></div>
         </div>
       </div>
     </div>
@@ -1592,6 +1606,8 @@ function buildBaseLayout() {
     editorZoomIn: document.getElementById('editorZoomIn'),
     editorZoomOut: document.getElementById('editorZoomOut'),
     editorZoomReset: document.getElementById('editorZoomReset'),
+    editorHelpBtn: document.getElementById('editorHelpBtn'),
+    editorHelpPop: document.getElementById('editorHelpPop'),
     editorSave: document.getElementById('editorSave'),
     editorCancel: document.getElementById('editorCancel'),
     editorHint: document.getElementById('editorHint'),
@@ -1634,6 +1650,9 @@ function renderI18n() {
   runtime.refs.editorHint.textContent = state.isMobile
     ? dict.editorHintMobile
     : dict.editorHintPc;
+  runtime.refs.editorHelpPop.textContent = state.isMobile
+    ? dict.editorHelpMobile
+    : dict.editorHelpPc;
 
   renderLangMenu();
   renderControls();
@@ -1659,6 +1678,50 @@ function renderLangMenu() {
     });
     pop.appendChild(option);
   });
+}
+
+function dialogStyleIconSvg(styleKey, size) {
+  const common = `width="${size}" height="${size}" viewBox="0 0 32 32" shape-rendering="crispEdges"`;
+  const map = {
+    win95: `<svg ${common}>
+      <rect width="32" height="32" fill="#c0c0c0"/>
+      <rect x="1" y="1" width="30" height="4" fill="#000080"/>
+      <rect x="2" y="2" width="6" height="2" fill="#ffffff" opacity="0.8"/>
+      <circle cx="16" cy="19" r="7" fill="#ff0000"/>
+      <line x1="12" y1="15" x2="20" y2="23" stroke="#ffffff" stroke-width="2"/>
+      <line x1="20" y1="15" x2="12" y2="23" stroke="#ffffff" stroke-width="2"/>
+    </svg>`,
+    terminal: `<svg ${common}>
+      <rect width="32" height="32" fill="#000000"/>
+      <rect x="0" y="0" width="32" height="32" fill="none" stroke="#33ff33" stroke-width="1"/>
+      <text x="4" y="14" fill="#33ff33" font-size="10" font-family="monospace">&gt;_</text>
+      <rect x="4" y="20" width="18" height="2" fill="#33ff33" opacity="0.5"/>
+      <rect x="4" y="25" width="12" height="2" fill="#33ff33" opacity="0.3"/>
+    </svg>`,
+    dq: `<svg ${common}>
+      <rect width="32" height="32" fill="#000000"/>
+      <rect x="2" y="2" width="28" height="28" fill="none" stroke="#ffffff" stroke-width="2"/>
+      <rect x="6" y="8" width="16" height="2" fill="#ffffff"/>
+      <rect x="6" y="14" width="20" height="2" fill="#ffffff"/>
+      <rect x="6" y="20" width="12" height="2" fill="#ffffff"/>
+    </svg>`,
+    ff: `<svg ${common}>
+      <rect width="32" height="16" fill="#000088"/>
+      <rect y="16" width="32" height="16" fill="#000044"/>
+      <rect x="2" y="2" width="28" height="28" fill="none" stroke="#8888dd" stroke-width="2"/>
+      <rect x="6" y="8" width="16" height="2" fill="#ffffff"/>
+      <rect x="6" y="14" width="20" height="2" fill="#ffffff"/>
+      <rect x="6" y="20" width="12" height="2" fill="#ffffff"/>
+    </svg>`,
+    retro: `<svg ${common}>
+      <rect width="32" height="32" fill="#2a1a0a"/>
+      <rect x="2" y="2" width="28" height="28" fill="none" stroke="#c8a870" stroke-width="2"/>
+      <rect x="6" y="8" width="16" height="2" fill="#f0e0c0"/>
+      <rect x="6" y="14" width="20" height="2" fill="#f0e0c0"/>
+      <rect x="6" y="20" width="12" height="2" fill="#f0e0c0"/>
+    </svg>`,
+  };
+  return map[styleKey] || '';
 }
 
 function renderControls() {
@@ -1735,12 +1798,13 @@ function renderControls() {
   runtime.refs.dialogControls.classList.toggle('hidden', !state.dialogEnabled);
 
   runtime.refs.dialogStyleButtons.innerHTML = '';
+  const previewSize = state.isMobile ? 32 : 36;
   ['win95', 'terminal', 'dq', 'ff', 'retro'].forEach((styleKey) => {
     const btn = document.createElement('button');
-    btn.className = `btn btn-small ${state.dialogStyle === styleKey ? 'active' : ''}`;
-    btn.style.fontSize = '10px';
+    btn.className = `dialog-style-btn ${state.dialogStyle === styleKey ? 'active' : ''}`;
     btn.title = dict[styleKey] || styleKey;
-    btn.textContent = dict[styleKey] || styleKey;
+    btn.setAttribute('aria-label', dict[styleKey] || styleKey);
+    btn.innerHTML = dialogStyleIconSvg(styleKey, previewSize);
     btn.addEventListener('click', () => {
       state.dialogStyle = styleKey;
       playClick();
@@ -2805,19 +2869,42 @@ function createEditorState() {
     indices: new Uint8Array(grid.indices),
     tool: 'pen',
     colorIndex: 1,
+    zoomIndex: 3,
     scale: 8,
-    minScale: 1,
-    maxScale: 40,
     panX: 0,
     panY: 0,
     isDrawing: false,
     last: null,
     isPanning: false,
     panStart: null,
+    pinch: null,
+    showHelp: false,
     undoStack: [],
     redoStack: [],
     maxHistory: 50,
   };
+}
+
+function clampEditorZoomIndex(index) {
+  return Math.max(0, Math.min(EDITOR_ZOOM_LEVELS.length - 1, index));
+}
+
+function setEditorZoomIndex(editor, nextIndex, anchorX, anchorY) {
+  const currentIndex = clampEditorZoomIndex(editor.zoomIndex);
+  const targetIndex = clampEditorZoomIndex(nextIndex);
+  if (currentIndex === targetIndex) return false;
+
+  const prevScale = EDITOR_ZOOM_LEVELS[currentIndex];
+  const nextScale = EDITOR_ZOOM_LEVELS[targetIndex];
+
+  const relX = (anchorX - editor.panX) / prevScale;
+  const relY = (anchorY - editor.panY) / prevScale;
+
+  editor.zoomIndex = targetIndex;
+  editor.scale = nextScale;
+  editor.panX = anchorX - relX * nextScale;
+  editor.panY = anchorY - relY * nextScale;
+  return true;
 }
 
 function pushEditorUndo(editor) {
@@ -2927,13 +3014,13 @@ function fitEditorScale(editor) {
   canvas.height = rect.height;
 
   const fit = Math.min(rect.width / editor.width, rect.height / editor.height);
-  const candidates = [1, 2, 4, 8, 16, 24, 32];
-  let pick = 1;
-  candidates.forEach((c) => {
-    if (c <= fit) pick = c;
+  let pickIndex = 0;
+  EDITOR_ZOOM_LEVELS.forEach((zoom, index) => {
+    if (zoom <= fit) pickIndex = index;
   });
 
-  editor.scale = pick;
+  editor.zoomIndex = pickIndex;
+  editor.scale = EDITOR_ZOOM_LEVELS[pickIndex];
   editor.panX = (rect.width - editor.width * editor.scale) / 2;
   editor.panY = (rect.height - editor.height * editor.scale) / 2;
 }
@@ -3024,19 +3111,9 @@ function renderEditorControls() {
   runtime.refs.editorPalette.innerHTML = '';
   editor.colors.forEach((rgb, idx) => {
     const btn = document.createElement('button');
-    btn.className = `btn palette-item ${editor.colorIndex === idx ? 'active' : ''}`;
-
-    const sw = document.createElement('span');
-    sw.className = 'palette-swatch';
-    sw.style.width = '18px';
-    sw.style.height = '18px';
-    sw.style.background = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
-
-    const label = document.createElement('span');
-    label.textContent = `${idx.toString(16)}`;
-
-    btn.appendChild(sw);
-    btn.appendChild(label);
+    btn.className = `editor-color-btn ${editor.colorIndex === idx ? 'active' : ''}`;
+    btn.style.background = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    btn.setAttribute('aria-label', `color-${idx}`);
     btn.addEventListener('click', () => {
       editor.colorIndex = idx;
       editor.tool = 'pen';
@@ -3048,7 +3125,12 @@ function renderEditorControls() {
 
   runtime.refs.editorUndo.disabled = editor.undoStack.length === 0;
   runtime.refs.editorRedo.disabled = editor.redoStack.length === 0;
-  runtime.refs.editorZoomReset.textContent = `${Math.round((editor.scale / 8) * 100)}%`;
+  runtime.refs.editorZoomReset.textContent = `x${editor.scale}`;
+  runtime.refs.editorHelpPop.textContent = state.isMobile
+    ? dict.editorHelpMobile
+    : dict.editorHelpPc;
+  runtime.refs.editorHelpPop.classList.toggle('hidden', !editor.showHelp);
+  runtime.refs.editorHelpBtn.classList.toggle('active', !!editor.showHelp);
 }
 
 function openEditor() {
@@ -3056,6 +3138,7 @@ function openEditor() {
 
   runtime.editor = createEditorState();
   fitEditorScale(runtime.editor);
+  runtime.editorSpacePan = false;
   state.isEditorOpen = true;
   runtime.refs.editorModal.classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -3070,6 +3153,7 @@ function closeEditor() {
   runtime.refs.editorModal.classList.remove('open');
   document.body.style.overflow = '';
   runtime.editor = null;
+  runtime.editorSpacePan = false;
   playClick();
 }
 
@@ -3117,8 +3201,9 @@ function onEditorPointerDown(event) {
   const editor = runtime.editor;
   if (!editor) return;
 
-  const isPan = event.button === 1 || (event.button === 0 && event.shiftKey);
+  const isPan = event.button === 1 || (event.button === 0 && runtime.editorSpacePan);
   if (isPan) {
+    event.preventDefault();
     editor.isPanning = true;
     editor.panStart = {
       x: event.clientX,
@@ -3142,6 +3227,7 @@ function onEditorPointerDown(event) {
   }
 
   if (event.button !== 0) return;
+  event.currentTarget.setPointerCapture(event.pointerId);
 
   const p = editorCoordFromPointer(event.clientX, event.clientY);
   if (!p) return;
@@ -3203,25 +3289,81 @@ function onEditorWheel(event) {
 
   event.preventDefault();
 
-  const prevScale = editor.scale;
-  if (event.deltaY < 0) {
-    editor.scale = Math.min(editor.maxScale, editor.scale * 1.2);
-  } else {
-    editor.scale = Math.max(editor.minScale, editor.scale / 1.2);
-  }
-
   const rect = runtime.refs.editorCanvas.getBoundingClientRect();
   const mx = event.clientX - rect.left;
   const my = event.clientY - rect.top;
-
-  const relX = (mx - editor.panX) / prevScale;
-  const relY = (my - editor.panY) / prevScale;
-
-  editor.panX = mx - relX * editor.scale;
-  editor.panY = my - relY * editor.scale;
+  const delta = event.deltaY < 0 ? 1 : -1;
+  const changed = setEditorZoomIndex(editor, editor.zoomIndex + delta, mx, my);
+  if (!changed) return;
 
   renderEditorCanvas();
   renderEditorControls();
+}
+
+function onEditorTouchStart(event) {
+  const editor = runtime.editor;
+  if (!editor) return;
+  if (event.touches.length !== 2) return;
+
+  event.preventDefault();
+  editor.isDrawing = false;
+  editor.last = null;
+  editor.pinch = {
+    dist: Math.hypot(
+      event.touches[1].clientX - event.touches[0].clientX,
+      event.touches[1].clientY - event.touches[0].clientY,
+    ),
+    midX: (event.touches[0].clientX + event.touches[1].clientX) / 2,
+    midY: (event.touches[0].clientY + event.touches[1].clientY) / 2,
+    startPanX: editor.panX,
+    startPanY: editor.panY,
+    startZoomIndex: editor.zoomIndex,
+  };
+}
+
+function onEditorTouchMove(event) {
+  const editor = runtime.editor;
+  if (!editor || !editor.pinch || event.touches.length !== 2) return;
+
+  event.preventDefault();
+  const t0 = event.touches[0];
+  const t1 = event.touches[1];
+  const currentDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+  const currentMidX = (t0.clientX + t1.clientX) / 2;
+  const currentMidY = (t0.clientY + t1.clientY) / 2;
+
+  const startScale = EDITOR_ZOOM_LEVELS[editor.pinch.startZoomIndex];
+  const targetScale = startScale * (currentDist / editor.pinch.dist);
+  let nextIndex = 0;
+  for (let i = 0; i < EDITOR_ZOOM_LEVELS.length; i += 1) {
+    if (EDITOR_ZOOM_LEVELS[i] <= targetScale) nextIndex = i;
+  }
+  nextIndex = clampEditorZoomIndex(nextIndex);
+
+  const rect = runtime.refs.editorCanvas.getBoundingClientRect();
+  const startMidXLocal = editor.pinch.midX - rect.left;
+  const startMidYLocal = editor.pinch.midY - rect.top;
+  const currentMidXLocal = currentMidX - rect.left;
+  const currentMidYLocal = currentMidY - rect.top;
+  const nextScale = EDITOR_ZOOM_LEVELS[nextIndex];
+
+  editor.zoomIndex = nextIndex;
+  editor.scale = nextScale;
+  editor.panX =
+    currentMidXLocal -
+    ((startMidXLocal - editor.pinch.startPanX) * nextScale) / startScale;
+  editor.panY =
+    currentMidYLocal -
+    ((startMidYLocal - editor.pinch.startPanY) * nextScale) / startScale;
+
+  renderEditorCanvas();
+  renderEditorControls();
+}
+
+function onEditorTouchEnd() {
+  const editor = runtime.editor;
+  if (!editor) return;
+  editor.pinch = null;
 }
 
 function bindEvents() {
@@ -3440,15 +3582,21 @@ function bindEvents() {
   r.editorRedo.addEventListener('click', editorRedo);
 
   r.editorZoomIn.addEventListener('click', () => {
-    if (!runtime.editor) return;
-    runtime.editor.scale = Math.min(runtime.editor.maxScale, runtime.editor.scale * 1.2);
+    const editor = runtime.editor;
+    if (!editor) return;
+    const rect = r.editorCanvasWrap.getBoundingClientRect();
+    const changed = setEditorZoomIndex(editor, editor.zoomIndex + 1, rect.width / 2, rect.height / 2);
+    if (!changed) return;
     renderEditorCanvas();
     renderEditorControls();
   });
 
   r.editorZoomOut.addEventListener('click', () => {
-    if (!runtime.editor) return;
-    runtime.editor.scale = Math.max(runtime.editor.minScale, runtime.editor.scale / 1.2);
+    const editor = runtime.editor;
+    if (!editor) return;
+    const rect = r.editorCanvasWrap.getBoundingClientRect();
+    const changed = setEditorZoomIndex(editor, editor.zoomIndex - 1, rect.width / 2, rect.height / 2);
+    if (!changed) return;
     renderEditorCanvas();
     renderEditorControls();
   });
@@ -3460,15 +3608,32 @@ function bindEvents() {
     renderEditorControls();
   });
 
+  r.editorHelpBtn.addEventListener('click', () => {
+    if (!runtime.editor) return;
+    runtime.editor.showHelp = !runtime.editor.showHelp;
+    playClick();
+    renderEditorControls();
+  });
+
   r.editorCanvas.addEventListener('contextmenu', (event) => event.preventDefault());
   r.editorCanvas.addEventListener('pointerdown', onEditorPointerDown);
   r.editorCanvas.addEventListener('pointermove', onEditorPointerMove);
   r.editorCanvas.addEventListener('pointerup', onEditorPointerUp);
   r.editorCanvas.addEventListener('pointerleave', onEditorPointerUp);
   r.editorCanvas.addEventListener('wheel', onEditorWheel, { passive: false });
+  r.editorCanvas.addEventListener('touchstart', onEditorTouchStart, { passive: false });
+  r.editorCanvas.addEventListener('touchmove', onEditorTouchMove, { passive: false });
+  r.editorCanvas.addEventListener('touchend', onEditorTouchEnd);
+  r.editorCanvas.addEventListener('touchcancel', onEditorTouchEnd);
 
   window.addEventListener('keydown', (event) => {
     if (!state.isEditorOpen || !runtime.editor) return;
+
+    if (event.key === ' ') {
+      event.preventDefault();
+      runtime.editorSpacePan = true;
+      return;
+    }
 
     if (event.key === 'Escape') {
       closeEditor();
@@ -3488,6 +3653,11 @@ function bindEvents() {
       event.preventDefault();
       editorRedo();
     }
+  });
+
+  window.addEventListener('keyup', (event) => {
+    if (!state.isEditorOpen || !runtime.editor) return;
+    if (event.key === ' ') runtime.editorSpacePan = false;
   });
 }
 
