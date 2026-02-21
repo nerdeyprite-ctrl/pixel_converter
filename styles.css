@@ -279,6 +279,24 @@ body {
   color: #333;
 }
 
+.preset-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.preset-row input,
+.preset-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.preset-row .btn {
+  min-width: 52px;
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
 .palette-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -338,6 +356,7 @@ body {
 }
 
 input[type="text"],
+select,
 textarea,
 input[type="range"] {
   width: 100%;
@@ -347,6 +366,7 @@ input[type="range"] {
 }
 
 input[type="text"],
+select,
 textarea {
   background: #fff;
   box-shadow: var(--shadow-sunken);

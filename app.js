@@ -284,6 +284,12 @@ const I18N = {
     onOff: 'ON / OFF',
     download: '↓ DOWNLOAD PNG',
     pngScale: 'PNG倍率',
+    preset: 'プリセット',
+    presetNamePh: 'プリセット名',
+    savePreset: '保存',
+    applyPreset: '適用',
+    deletePreset: '削除',
+    noPreset: 'プリセットなし',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: '録画中...',
     glitch: 'グリッチ',
@@ -351,6 +357,12 @@ const I18N = {
     onOff: 'ON / OFF',
     download: '↓ DOWNLOAD PNG',
     pngScale: 'PNG Scale',
+    preset: 'Preset',
+    presetNamePh: 'Preset name',
+    savePreset: 'Save',
+    applyPreset: 'Apply',
+    deletePreset: 'Delete',
+    noPreset: 'No presets',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: 'RECORDING...',
     glitch: 'Glitch',
@@ -418,6 +430,12 @@ const I18N = {
     onOff: 'ON / OFF',
     download: '↓ DOWNLOAD PNG',
     pngScale: 'PNG 배율',
+    preset: '프리셋',
+    presetNamePh: '프리셋 이름',
+    savePreset: '저장',
+    applyPreset: '적용',
+    deletePreset: '삭제',
+    noPreset: '프리셋 없음',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: '녹화 중...',
     glitch: '글리치',
@@ -897,6 +915,8 @@ const ADJUSTMENT_DEFAULTS = {
   saturation: 0,
   sharpness: 0,
 };
+const PRESET_STORAGE_KEY = 'pixel_converter_custom_presets_v1';
+const MAX_CUSTOM_PRESETS = 30;
 
 const state = {
   imageUrl: null,
@@ -929,6 +949,9 @@ const state = {
   ghostMsg: '',
   frameTick: 0,
   pngScale: 1,
+  customPresets: [],
+  selectedPresetId: '',
+  presetDraftName: '',
   isMobile: window.innerWidth < 768,
   mobileTab: 'pixel',
   now: new Date(),
@@ -972,6 +995,124 @@ function t() {
 
 function clamp255(value) {
   return Math.max(0, Math.min(255, value));
+}
+
+function clampNumber(value, min, max, fallback) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(min, Math.min(max, num));
+}
+
+function createPresetId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `preset-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function sanitizePresetSettings(input = {}) {
+  const pixelSize = [2, 3, 4, 5].includes(Number(input.pixelSize)) ? Number(input.pixelSize) : 3;
+  const paletteKey = PALETTES[input.paletteKey] ? input.paletteKey : 'sora';
+
+  const effects = {};
+  Object.keys(state.effects).forEach((key) => {
+    effects[key] = Boolean(input.effects?.[key]);
+  });
+
+  const ranges = {
+    brightness: [-100, 100],
+    exposure: [-100, 100],
+    grayscale: [0, 100],
+    hue: [-180, 180],
+    saturation: [-100, 100],
+    sharpness: [0, 100],
+  };
+  const adjustments = {};
+  Object.entries(ADJUSTMENT_DEFAULTS).forEach(([key, defaultValue]) => {
+    const [min, max] = ranges[key];
+    adjustments[key] = Math.round(
+      clampNumber(input.adjustments?.[key], min, max, defaultValue),
+    );
+  });
+
+  const dialogStyle = DIALOG_THEMES[input.dialogStyle] ? input.dialogStyle : 'win95';
+  const dialogEnabled = Boolean(input.dialogEnabled);
+  const dialogPosition = Math.round(clampNumber(input.dialogPosition, 10, 100, 70));
+  const pngScale = [1, 2, 3, 4].includes(Number(input.pngScale)) ? Number(input.pngScale) : 1;
+
+  return {
+    pixelSize,
+    paletteKey,
+    effects,
+    adjustments,
+    dialogEnabled,
+    dialogStyle,
+    dialogPosition,
+    pngScale,
+  };
+}
+
+function captureCurrentPresetSettings() {
+  return sanitizePresetSettings({
+    pixelSize: state.pixelSize,
+    paletteKey: state.paletteKey,
+    effects: state.effects,
+    adjustments: state.adjustments,
+    dialogEnabled: state.dialogEnabled,
+    dialogStyle: state.dialogStyle,
+    dialogPosition: state.dialogPosition,
+    pngScale: state.pngScale,
+  });
+}
+
+function sanitizeCustomPreset(rawPreset) {
+  if (!rawPreset || typeof rawPreset !== 'object') return null;
+  const name = String(rawPreset.name || '').trim().slice(0, 24);
+  if (!name) return null;
+
+  const id = String(rawPreset.id || createPresetId());
+  if (!id) return null;
+
+  return {
+    id,
+    name,
+    settings: sanitizePresetSettings(rawPreset.settings || rawPreset),
+    createdAt: Number(rawPreset.createdAt) || Date.now(),
+  };
+}
+
+function saveCustomPresets() {
+  try {
+    localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(state.customPresets));
+  } catch (err) {
+    // ignore storage errors
+  }
+}
+
+function loadCustomPresets() {
+  try {
+    const raw = localStorage.getItem(PRESET_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+
+    const dedupe = new Set();
+    const list = parsed
+      .map(sanitizeCustomPreset)
+      .filter(Boolean)
+      .filter((preset) => {
+        if (dedupe.has(preset.id)) return false;
+        dedupe.add(preset.id);
+        return true;
+      })
+      .slice(0, MAX_CUSTOM_PRESETS);
+
+    state.customPresets = list;
+    state.selectedPresetId = list[0]?.id || '';
+  } catch (err) {
+    state.customPresets = [];
+    state.selectedPresetId = '';
+  }
 }
 
 function rand(list) {
@@ -1542,6 +1683,17 @@ function buildBaseLayout() {
                   <span id="adjSharpnessVal" class="adjust-val">0</span>
                 </label>
               </div>
+
+              <label class="label" style="margin-top: 8px" data-i18n="preset"></label>
+              <div class="preset-row">
+                <input id="presetName" type="text" maxlength="24" />
+                <button id="presetSaveBtn" class="btn btn-small" data-i18n="savePreset"></button>
+              </div>
+              <div class="preset-row">
+                <select id="presetSelect"></select>
+                <button id="presetApplyBtn" class="btn btn-small" data-i18n="applyPreset"></button>
+                <button id="presetDeleteBtn" class="btn btn-small" data-i18n="deletePreset"></button>
+              </div>
             </div>
           </section>
 
@@ -1797,6 +1949,11 @@ function buildBaseLayout() {
     adjHueVal: document.getElementById('adjHueVal'),
     adjSaturationVal: document.getElementById('adjSaturationVal'),
     adjSharpnessVal: document.getElementById('adjSharpnessVal'),
+    presetName: document.getElementById('presetName'),
+    presetSaveBtn: document.getElementById('presetSaveBtn'),
+    presetSelect: document.getElementById('presetSelect'),
+    presetApplyBtn: document.getElementById('presetApplyBtn'),
+    presetDeleteBtn: document.getElementById('presetDeleteBtn'),
     paletteGrid: document.getElementById('paletteGrid'),
     dialogEnabled: document.getElementById('dialogEnabled'),
     dialogControls: document.getElementById('dialogControls'),
@@ -1867,6 +2024,7 @@ function renderI18n() {
 
   runtime.refs.dialogName.placeholder = dict.namePh;
   runtime.refs.dialogText.placeholder = dict.textPh;
+  runtime.refs.presetName.placeholder = dict.presetNamePh;
   runtime.refs.dialogPosLabel.textContent = state.isMobile
     ? dict.position
     : `${dict.position}: ${state.dialogPosition}%`;
@@ -1964,6 +2122,67 @@ function dialogStyleIconSvg(styleKey, size) {
   return map[styleKey] || '';
 }
 
+function saveCurrentPreset() {
+  const baseName = state.presetDraftName.trim().slice(0, 24);
+  const dict = t();
+  const name = baseName || `${dict.preset} ${state.customPresets.length + 1}`;
+  const preset = {
+    id: createPresetId(),
+    name,
+    settings: captureCurrentPresetSettings(),
+    createdAt: Date.now(),
+  };
+
+  const next = [...state.customPresets, preset];
+  state.customPresets = next.slice(Math.max(0, next.length - MAX_CUSTOM_PRESETS));
+  state.selectedPresetId = preset.id;
+  state.presetDraftName = '';
+  saveCustomPresets();
+  renderControls();
+}
+
+function applySelectedPreset() {
+  if (!state.selectedPresetId) return;
+  const preset = state.customPresets.find((item) => item.id === state.selectedPresetId);
+  if (!preset) return;
+
+  const next = sanitizePresetSettings(preset.settings);
+  const needsReconvert =
+    Boolean(state.sourceImage) &&
+    (state.pixelSize !== next.pixelSize || state.paletteKey !== next.paletteKey);
+
+  state.pixelSize = next.pixelSize;
+  state.paletteKey = next.paletteKey;
+  state.effects = { ...next.effects };
+  state.adjustments = { ...next.adjustments };
+  state.dialogEnabled = next.dialogEnabled;
+  state.dialogStyle = next.dialogStyle;
+  state.dialogPosition = next.dialogPosition;
+  state.pngScale = next.pngScale;
+
+  resetTyping();
+  renderControls();
+  renderStatus();
+  renderDialogOverlay();
+  syncPreviewState();
+
+  if (needsReconvert) {
+    convertCurrentImage();
+  } else {
+    syncFxLoop();
+  }
+}
+
+function deleteSelectedPreset() {
+  if (!state.selectedPresetId) return;
+  state.customPresets = state.customPresets.filter(
+    (preset) => preset.id !== state.selectedPresetId,
+  );
+  state.selectedPresetId = state.customPresets[0]?.id || '';
+  saveCustomPresets();
+  renderControls();
+}
+
 function renderControls() {
   const dict = t();
 
@@ -2018,6 +2237,34 @@ function renderControls() {
   runtime.refs.adjHueVal.textContent = `${adjustments.hue > 0 ? '+' : ''}${adjustments.hue}`;
   runtime.refs.adjSaturationVal.textContent = `${adjustments.saturation > 0 ? '+' : ''}${adjustments.saturation}`;
   runtime.refs.adjSharpnessVal.textContent = `${adjustments.sharpness}`;
+  runtime.refs.presetName.value = state.presetDraftName;
+
+  const presetSelect = runtime.refs.presetSelect;
+  presetSelect.innerHTML = '';
+  if (state.customPresets.length === 0) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = dict.noPreset;
+    presetSelect.appendChild(option);
+    state.selectedPresetId = '';
+  } else {
+    if (!state.customPresets.some((preset) => preset.id === state.selectedPresetId)) {
+      state.selectedPresetId = state.customPresets[0].id;
+    }
+    state.customPresets.forEach((preset) => {
+      const option = document.createElement('option');
+      option.value = preset.id;
+      option.textContent = preset.name;
+      presetSelect.appendChild(option);
+    });
+    presetSelect.value = state.selectedPresetId;
+  }
+  const hasPreset = Boolean(
+    state.selectedPresetId &&
+      state.customPresets.some((preset) => preset.id === state.selectedPresetId),
+  );
+  runtime.refs.presetApplyBtn.disabled = !hasPreset;
+  runtime.refs.presetDeleteBtn.disabled = !hasPreset;
 
   runtime.refs.paletteGrid.innerHTML = '';
   Object.entries(PALETTES).forEach(([key, palette]) => {
@@ -3824,6 +4071,37 @@ function bindEvents() {
     });
   });
 
+  r.presetName.addEventListener('input', (event) => {
+    state.presetDraftName = event.target.value.slice(0, 24);
+  });
+
+  r.presetName.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    saveCurrentPreset();
+    playClick();
+  });
+
+  r.presetSaveBtn.addEventListener('click', () => {
+    saveCurrentPreset();
+    playClick();
+  });
+
+  r.presetSelect.addEventListener('change', (event) => {
+    state.selectedPresetId = event.target.value;
+    renderControls();
+  });
+
+  r.presetApplyBtn.addEventListener('click', () => {
+    applySelectedPreset();
+    playClick();
+  });
+
+  r.presetDeleteBtn.addEventListener('click', () => {
+    deleteSelectedPreset();
+    playClick();
+  });
+
   r.downloadBtn.addEventListener('click', async () => {
     await savePng();
     playClick();
@@ -4043,6 +4321,7 @@ function syncUiState() {
 
 function init() {
   buildBaseLayout();
+  loadCustomPresets();
   bindEvents();
 
   state.now = new Date();
