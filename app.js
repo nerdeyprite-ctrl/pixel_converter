@@ -2920,15 +2920,26 @@ function renderPngCanvas(
   const preview = runtime.refs.previewCanvas;
   if (!preview || !preview.width || !preview.height) return null;
   const scale = Math.max(1, Math.min(4, Math.round(exportScale || 1)));
+  const logicalW = runtime.gridData?.width || preview.width;
+  const logicalH = runtime.gridData?.height || preview.height;
+
+  const logicalCanvas = document.createElement('canvas');
+  logicalCanvas.width = logicalW;
+  logicalCanvas.height = logicalH;
+  const logicalCtx = logicalCanvas.getContext('2d');
+  logicalCtx.clearRect(0, 0, logicalW, logicalH);
+  logicalCtx.imageSmoothingEnabled = false;
+  // Export uses logical pixel resolution, so x1 means one tile maps to one real pixel.
+  logicalCtx.drawImage(preview, 0, 0, logicalW, logicalH);
 
   const canvas = outCanvas || document.createElement('canvas');
-  canvas.width = preview.width * scale;
-  canvas.height = preview.height * scale;
+  canvas.width = logicalW * scale;
+  canvas.height = logicalH * scale;
 
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(logicalCanvas, 0, 0, canvas.width, canvas.height);
 
   drawOverlayOnCanvas(ctx, {
     x: 0,
