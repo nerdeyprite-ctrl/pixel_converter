@@ -291,6 +291,13 @@ const I18N = {
     ghost: '残像',
     ditherFade: 'ディザ',
     fx: 'FX',
+    adjust: '補正',
+    brightness: '明るさ',
+    exposure: '露出',
+    grayscale: '白黒',
+    hue: '色相',
+    saturation: '彩度',
+    sharpness: 'シャープ',
     edit: '編集',
     pen: 'ペン',
     eraser: '消しゴム',
@@ -350,6 +357,13 @@ const I18N = {
     ghost: 'Ghost',
     ditherFade: 'Dither',
     fx: 'FX',
+    adjust: 'Adjust',
+    brightness: 'Brightness',
+    exposure: 'Exposure',
+    grayscale: 'Grayscale',
+    hue: 'Hue',
+    saturation: 'Saturation',
+    sharpness: 'Sharpness',
     edit: 'Edit',
     pen: 'Pen',
     eraser: 'Eraser',
@@ -409,6 +423,13 @@ const I18N = {
     ghost: '잔상',
     ditherFade: '디더',
     fx: 'FX',
+    adjust: '보정',
+    brightness: '밝기',
+    exposure: '노출',
+    grayscale: '흑백',
+    hue: '색조',
+    saturation: '채도',
+    sharpness: '선명도',
     edit: '편집',
     pen: '펜',
     eraser: '지우개',
@@ -865,6 +886,14 @@ const BAYER4 = [
 ];
 
 const EDITOR_ZOOM_LEVELS = [1, 2, 4, 8, 16, 24, 32];
+const ADJUSTMENT_DEFAULTS = {
+  brightness: 0,
+  exposure: 0,
+  grayscale: 0,
+  hue: 0,
+  saturation: 0,
+  sharpness: 0,
+};
 
 const state = {
   imageUrl: null,
@@ -892,6 +921,7 @@ const state = {
     ghost: false,
     ditherFade: false,
   },
+  adjustments: { ...ADJUSTMENT_DEFAULTS },
   ghostEnabled: true,
   ghostMsg: '',
   frameTick: 0,
@@ -934,6 +964,10 @@ function getDefaultLang() {
 
 function t() {
   return { ...I18N.en, ...(I18N[state.lang] || I18N.ja) };
+}
+
+function clamp255(value) {
+  return Math.max(0, Math.min(255, value));
 }
 
 function rand(list) {
@@ -1117,6 +1151,125 @@ function applyDitherFade(ctx, width, height, frame) {
   ctx.putImageData(imageData, 0, 0);
 }
 
+function applyAdjustments(ctx, width, height, adjustments = state.adjustments) {
+  const {
+    brightness = 0,
+    exposure = 0,
+    grayscale = 0,
+    hue = 0,
+    saturation = 0,
+    sharpness = 0,
+  } = adjustments;
+
+  if (
+    brightness === 0 &&
+    exposure === 0 &&
+    grayscale === 0 &&
+    hue === 0 &&
+    saturation === 0 &&
+    sharpness === 0
+  ) {
+    return;
+  }
+
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  const exposureMul = Math.pow(2, exposure / 50);
+  const brightnessOffset = brightness * 2.55;
+  const grayMix = grayscale / 100;
+  const saturationMul = 1 + saturation / 100;
+
+  const hueRad = (hue * Math.PI) / 180;
+  const cosA = Math.cos(hueRad);
+  const sinA = Math.sin(hueRad);
+  const lumR = 0.213;
+  const lumG = 0.715;
+  const lumB = 0.072;
+
+  const h00 = lumR + cosA * (1 - lumR) + sinA * -lumR;
+  const h01 = lumG + cosA * -lumG + sinA * -lumG;
+  const h02 = lumB + cosA * -lumB + sinA * (1 - lumB);
+  const h10 = lumR + cosA * -lumR + sinA * 0.143;
+  const h11 = lumG + cosA * (1 - lumG) + sinA * 0.14;
+  const h12 = lumB + cosA * -lumB + sinA * -0.283;
+  const h20 = lumR + cosA * -lumR + sinA * -(1 - lumR);
+  const h21 = lumG + cosA * -lumG + sinA * lumG;
+  const h22 = lumB + cosA * (1 - lumB) + sinA * lumB;
+
+  const needsColorTransform =
+    brightness !== 0 || exposure !== 0 || grayscale !== 0 || hue !== 0 || saturation !== 0;
+
+  if (needsColorTransform) {
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] === 0) continue;
+
+      let r = data[i];
+      let g = data[i + 1];
+      let b = data[i + 2];
+
+      r = r * exposureMul + brightnessOffset;
+      g = g * exposureMul + brightnessOffset;
+      b = b * exposureMul + brightnessOffset;
+
+      if (hue !== 0) {
+        const nr = r * h00 + g * h01 + b * h02;
+        const ng = r * h10 + g * h11 + b * h12;
+        const nb = r * h20 + g * h21 + b * h22;
+        r = nr;
+        g = ng;
+        b = nb;
+      }
+
+      if (saturation !== 0) {
+        const luma = r * 0.299 + g * 0.587 + b * 0.114;
+        r = luma + (r - luma) * saturationMul;
+        g = luma + (g - luma) * saturationMul;
+        b = luma + (b - luma) * saturationMul;
+      }
+
+      if (grayMix > 0) {
+        const luma = r * 0.299 + g * 0.587 + b * 0.114;
+        r = r * (1 - grayMix) + luma * grayMix;
+        g = g * (1 - grayMix) + luma * grayMix;
+        b = b * (1 - grayMix) + luma * grayMix;
+      }
+
+      data[i] = clamp255(r);
+      data[i + 1] = clamp255(g);
+      data[i + 2] = clamp255(b);
+    }
+  }
+
+  if (sharpness > 0) {
+    const src = new Uint8ClampedArray(data);
+    const amount = (sharpness / 100) * 1.8;
+    for (let y = 1; y < height - 1; y += 1) {
+      for (let x = 1; x < width - 1; x += 1) {
+        const idx = (y * width + x) * 4;
+        const left = idx - 4;
+        const right = idx + 4;
+        const up = idx - width * 4;
+        const down = idx + width * 4;
+
+        for (let c = 0; c < 3; c += 1) {
+          const center = src[idx + c];
+          const blur =
+            (src[idx + c] * 4 +
+              src[left + c] +
+              src[right + c] +
+              src[up + c] +
+              src[down + c]) /
+            8;
+          data[idx + c] = clamp255(center + (center - blur) * amount);
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
 function drawPixelFrame(ctx, pixels, sliceRaw, x, y, width, height, scaleOverride) {
   const h = pixels.length;
   const w = pixels[0].length;
@@ -1188,6 +1341,12 @@ function drawPixelFrame(ctx, pixels, sliceRaw, x, y, width, height, scaleOverrid
 
 function hasActiveFx() {
   return Object.values(state.effects).some(Boolean);
+}
+
+function hasActiveAdjustments() {
+  return Object.entries(state.adjustments).some(
+    ([key, value]) => value !== ADJUSTMENT_DEFAULTS[key],
+  );
 }
 
 function isRpgStyle(styleKey) {
@@ -1320,6 +1479,40 @@ function buildBaseLayout() {
 
               <label class="label" style="margin-top: 8px" data-i18n="fx"></label>
               <div class="fx-grid" id="fxButtons"></div>
+
+              <label class="label" style="margin-top: 8px" data-i18n="adjust"></label>
+              <div class="adjust-grid">
+                <label class="adjust-row">
+                  <span data-i18n="brightness"></span>
+                  <input id="adjBrightness" type="range" min="-100" max="100" step="1" value="0" />
+                  <span id="adjBrightnessVal" class="adjust-val">0</span>
+                </label>
+                <label class="adjust-row">
+                  <span data-i18n="exposure"></span>
+                  <input id="adjExposure" type="range" min="-100" max="100" step="1" value="0" />
+                  <span id="adjExposureVal" class="adjust-val">0</span>
+                </label>
+                <label class="adjust-row">
+                  <span data-i18n="grayscale"></span>
+                  <input id="adjGrayscale" type="range" min="0" max="100" step="1" value="0" />
+                  <span id="adjGrayscaleVal" class="adjust-val">0</span>
+                </label>
+                <label class="adjust-row">
+                  <span data-i18n="hue"></span>
+                  <input id="adjHue" type="range" min="-180" max="180" step="1" value="0" />
+                  <span id="adjHueVal" class="adjust-val">0</span>
+                </label>
+                <label class="adjust-row">
+                  <span data-i18n="saturation"></span>
+                  <input id="adjSaturation" type="range" min="-100" max="100" step="1" value="0" />
+                  <span id="adjSaturationVal" class="adjust-val">0</span>
+                </label>
+                <label class="adjust-row">
+                  <span data-i18n="sharpness"></span>
+                  <input id="adjSharpness" type="range" min="0" max="100" step="1" value="0" />
+                  <span id="adjSharpnessVal" class="adjust-val">0</span>
+                </label>
+              </div>
             </div>
           </section>
 
@@ -1559,6 +1752,18 @@ function buildBaseLayout() {
     dialogPanel: document.getElementById('dialogPanel'),
     sizeButtons: document.getElementById('sizeButtons'),
     fxButtons: document.getElementById('fxButtons'),
+    adjBrightness: document.getElementById('adjBrightness'),
+    adjExposure: document.getElementById('adjExposure'),
+    adjGrayscale: document.getElementById('adjGrayscale'),
+    adjHue: document.getElementById('adjHue'),
+    adjSaturation: document.getElementById('adjSaturation'),
+    adjSharpness: document.getElementById('adjSharpness'),
+    adjBrightnessVal: document.getElementById('adjBrightnessVal'),
+    adjExposureVal: document.getElementById('adjExposureVal'),
+    adjGrayscaleVal: document.getElementById('adjGrayscaleVal'),
+    adjHueVal: document.getElementById('adjHueVal'),
+    adjSaturationVal: document.getElementById('adjSaturationVal'),
+    adjSharpnessVal: document.getElementById('adjSharpnessVal'),
     paletteGrid: document.getElementById('paletteGrid'),
     dialogEnabled: document.getElementById('dialogEnabled'),
     dialogControls: document.getElementById('dialogControls'),
@@ -1763,6 +1968,21 @@ function renderControls() {
     });
     runtime.refs.fxButtons.appendChild(btn);
   });
+
+  const { adjustments } = state;
+  runtime.refs.adjBrightness.value = String(adjustments.brightness);
+  runtime.refs.adjExposure.value = String(adjustments.exposure);
+  runtime.refs.adjGrayscale.value = String(adjustments.grayscale);
+  runtime.refs.adjHue.value = String(adjustments.hue);
+  runtime.refs.adjSaturation.value = String(adjustments.saturation);
+  runtime.refs.adjSharpness.value = String(adjustments.sharpness);
+
+  runtime.refs.adjBrightnessVal.textContent = `${adjustments.brightness > 0 ? '+' : ''}${adjustments.brightness}`;
+  runtime.refs.adjExposureVal.textContent = `${adjustments.exposure > 0 ? '+' : ''}${adjustments.exposure}`;
+  runtime.refs.adjGrayscaleVal.textContent = `${adjustments.grayscale}`;
+  runtime.refs.adjHueVal.textContent = `${adjustments.hue > 0 ? '+' : ''}${adjustments.hue}`;
+  runtime.refs.adjSaturationVal.textContent = `${adjustments.saturation > 0 ? '+' : ''}${adjustments.saturation}`;
+  runtime.refs.adjSharpnessVal.textContent = `${adjustments.sharpness}`;
 
   runtime.refs.paletteGrid.innerHTML = '';
   Object.entries(PALETTES).forEach(([key, palette]) => {
@@ -2237,6 +2457,7 @@ function applyEffectsFrame(frameIndex = state.frameTick) {
   if (state.effects.ghost) applyGhost(ctx, canvas.width, canvas.height, frameIndex);
   if (state.effects.ditherFade) applyDitherFade(ctx, canvas.width, canvas.height, frameIndex);
   if (state.effects.glitch) applyGlitch(ctx, canvas.width, canvas.height, state.pixelSize);
+  if (hasActiveAdjustments()) applyAdjustments(ctx, canvas.width, canvas.height, state.adjustments);
 }
 
 function stopFxLoop() {
@@ -2249,15 +2470,28 @@ function syncFxLoop() {
   stopFxLoop();
 
   if (!hasActiveFx()) {
-    restoreBaseImage();
+    if (hasActiveAdjustments()) {
+      applyEffectsFrame(state.frameTick);
+    } else {
+      restoreBaseImage();
+    }
     return;
   }
 
   state.frameTick = 0;
+  applyEffectsFrame(state.frameTick);
   runtime.fxTimer = setInterval(() => {
     state.frameTick += 1;
     applyEffectsFrame(state.frameTick);
   }, 120);
+}
+
+function applyCurrentPreviewProcessing() {
+  if (hasActiveFx() || hasActiveAdjustments()) {
+    applyEffectsFrame(state.frameTick);
+  } else {
+    restoreBaseImage();
+  }
 }
 
 function renderWindowFrame(ctx, x, y, width, height, raised = true) {
@@ -3452,6 +3686,23 @@ function bindEvents() {
     state.dialogPosition = Number(event.target.value);
     renderControls();
     renderDialogOverlay();
+  });
+
+  const adjustmentInputMap = {
+    brightness: r.adjBrightness,
+    exposure: r.adjExposure,
+    grayscale: r.adjGrayscale,
+    hue: r.adjHue,
+    saturation: r.adjSaturation,
+    sharpness: r.adjSharpness,
+  };
+
+  Object.entries(adjustmentInputMap).forEach(([key, input]) => {
+    input.addEventListener('input', (event) => {
+      state.adjustments[key] = Number(event.target.value);
+      renderControls();
+      applyCurrentPreviewProcessing();
+    });
   });
 
   r.downloadBtn.addEventListener('click', async () => {

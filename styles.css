@@ -239,6 +239,30 @@ body {
   font-size: 10px;
 }
 
+.adjust-grid {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.adjust-row {
+  display: grid;
+  grid-template-columns: 62px 1fr 34px;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #000;
+}
+
+.adjust-row > span {
+  letter-spacing: 0.3px;
+}
+
+.adjust-val {
+  text-align: right;
+  color: #333;
+}
+
 .palette-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
