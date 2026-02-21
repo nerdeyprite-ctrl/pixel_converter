@@ -2887,11 +2887,40 @@ function renderExportCanvas(
   return canvas;
 }
 
+function renderPngCanvas(typedChars = state.dialogText.length, showBlink = true, outCanvas) {
+  const preview = runtime.refs.previewCanvas;
+  if (!preview || !preview.width || !preview.height) return null;
+
+  const canvas = outCanvas || document.createElement('canvas');
+  canvas.width = preview.width;
+  canvas.height = preview.height;
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
+
+  drawOverlayOnCanvas(ctx, {
+    x: 0,
+    y: 0,
+    width: canvas.width,
+    height: canvas.height,
+    typedChars,
+    showBlink,
+    scale: 1,
+    dialogStyle: state.dialogStyle,
+    dialogName: state.dialogName,
+    dialogText: state.dialogText,
+  });
+
+  return canvas;
+}
+
 async function savePng() {
   if (!runtime.refs.previewCanvas.width) return;
 
   await document.fonts.load("bold 14px 'DotGothic16'");
-  const out = renderExportCanvas(state.dialogText.length, true);
+  const out = renderPngCanvas(state.dialogText.length, true);
   if (!out) return;
 
   if (state.isMobile && navigator.canShare) {
