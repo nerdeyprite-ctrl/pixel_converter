@@ -289,6 +289,8 @@ const I18N = {
     savePreset: '保存',
     applyPreset: '適用',
     deletePreset: '削除',
+    exportPreset: '書き出し',
+    importPreset: '読み込み',
     noPreset: 'プリセットなし',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: '録画中...',
@@ -362,6 +364,8 @@ const I18N = {
     savePreset: 'Save',
     applyPreset: 'Apply',
     deletePreset: 'Delete',
+    exportPreset: 'Export',
+    importPreset: 'Import',
     noPreset: 'No presets',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: 'RECORDING...',
@@ -435,6 +439,8 @@ const I18N = {
     savePreset: '저장',
     applyPreset: '적용',
     deletePreset: '삭제',
+    exportPreset: '내보내기',
+    importPreset: '불러오기',
     noPreset: '프리셋 없음',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: '녹화 중...',
@@ -1065,19 +1071,81 @@ function captureCurrentPresetSettings() {
   });
 }
 
+function normalizePresetName(name) {
+  return String(name || '').trim().slice(0, 24);
+}
+
+function presetNameKey(name) {
+  return normalizePresetName(name).toLocaleLowerCase();
+}
+
+function sortCustomPresets(list) {
+  return [...list].sort((a, b) => {
+    const aUpdated = Number(a.updatedAt || a.createdAt || 0);
+    const bUpdated = Number(b.updatedAt || b.createdAt || 0);
+    if (aUpdated !== bUpdated) return bUpdated - aUpdated;
+    const aCreated = Number(a.createdAt || 0);
+    const bCreated = Number(b.createdAt || 0);
+    if (aCreated !== bCreated) return bCreated - aCreated;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function presetListFromPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === 'object' && Array.isArray(payload.presets)) return payload.presets;
+  return [];
+}
+
+function withPresetSuffix(baseName, index) {
+  const suffix = ` (${index})`;
+  const room = Math.max(1, 24 - suffix.length);
+  return `${baseName.slice(0, room).trimEnd()}${suffix}`;
+}
+
+function ensureUniquePresetName(name, existingPresets, ignorePresetId = '') {
+  const base = normalizePresetName(name) || 'Preset';
+  const used = new Set(
+    existingPresets
+      .filter((preset) => preset.id !== ignorePresetId)
+      .map((preset) => presetNameKey(preset.name)),
+  );
+  if (!used.has(presetNameKey(base))) return base;
+  let index = 2;
+  while (used.has(presetNameKey(withPresetSuffix(base, index)))) {
+    index += 1;
+  }
+  return withPresetSuffix(base, index);
+}
+
+function generateAutoPresetName(dict, presets) {
+  let index = presets.length + 1;
+  let candidate = `${dict.preset} ${index}`;
+  while (presets.some((preset) => presetNameKey(preset.name) === presetNameKey(candidate))) {
+    index += 1;
+    candidate = `${dict.preset} ${index}`;
+  }
+  return normalizePresetName(candidate) || `${dict.preset} ${Date.now().toString().slice(-4)}`;
+}
+
 function sanitizeCustomPreset(rawPreset) {
   if (!rawPreset || typeof rawPreset !== 'object') return null;
-  const name = String(rawPreset.name || '').trim().slice(0, 24);
+  const name = normalizePresetName(rawPreset.name);
   if (!name) return null;
 
   const id = String(rawPreset.id || createPresetId());
   if (!id) return null;
 
+  const createdAt = Number(rawPreset.createdAt) || Date.now();
+  const updatedAt =
+    Number(rawPreset.updatedAt) || Number(rawPreset.createdAt) || createdAt;
+
   return {
     id,
     name,
     settings: sanitizePresetSettings(rawPreset.settings || rawPreset),
-    createdAt: Number(rawPreset.createdAt) || Date.now(),
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -1094,18 +1162,20 @@ function loadCustomPresets() {
     const raw = localStorage.getItem(PRESET_STORAGE_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return;
+    const rawList = presetListFromPayload(parsed);
+    if (!Array.isArray(rawList)) return;
 
     const dedupe = new Set();
-    const list = parsed
+    const list = sortCustomPresets(
+      rawList
       .map(sanitizeCustomPreset)
       .filter(Boolean)
       .filter((preset) => {
         if (dedupe.has(preset.id)) return false;
         dedupe.add(preset.id);
         return true;
-      })
-      .slice(0, MAX_CUSTOM_PRESETS);
+      }),
+    ).slice(0, MAX_CUSTOM_PRESETS);
 
     state.customPresets = list;
     state.selectedPresetId = list[0]?.id || '';
@@ -1113,6 +1183,94 @@ function loadCustomPresets() {
     state.customPresets = [];
     state.selectedPresetId = '';
   }
+}
+
+function exportCustomPresetsJson() {
+  if (!state.customPresets.length) return;
+  const payload = {
+    version: 1,
+    exportedAt: Date.now(),
+    presets: state.customPresets,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.download = 'pixel-presets.json';
+  a.href = url;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importCustomPresetsJson(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || ''));
+      const rawList = presetListFromPayload(parsed);
+      if (!Array.isArray(rawList)) return;
+
+      const existing = [...state.customPresets];
+      const byId = new Map(existing.map((preset) => [preset.id, preset]));
+      const now = Date.now();
+
+      rawList.forEach((rawPreset) => {
+        const incoming = sanitizeCustomPreset(rawPreset);
+        if (!incoming) return;
+
+        const sameId = byId.get(incoming.id);
+        if (sameId) {
+          byId.set(incoming.id, {
+            ...sameId,
+            ...incoming,
+            createdAt: Math.min(sameId.createdAt || now, incoming.createdAt || now),
+            updatedAt: Math.max(
+              sameId.updatedAt || sameId.createdAt || 0,
+              incoming.updatedAt || incoming.createdAt || 0,
+            ),
+          });
+          return;
+        }
+
+        const sameName = Array.from(byId.values()).find(
+          (preset) => presetNameKey(preset.name) === presetNameKey(incoming.name),
+        );
+        if (sameName) {
+          byId.set(sameName.id, {
+            ...sameName,
+            settings: incoming.settings,
+            updatedAt: Math.max(
+              sameName.updatedAt || sameName.createdAt || 0,
+              incoming.updatedAt || incoming.createdAt || 0,
+              now,
+            ),
+          });
+          return;
+        }
+
+        const uniqueName = ensureUniquePresetName(incoming.name, Array.from(byId.values()));
+        byId.set(incoming.id, {
+          ...incoming,
+          name: uniqueName,
+          createdAt: incoming.createdAt || now,
+          updatedAt: incoming.updatedAt || incoming.createdAt || now,
+        });
+      });
+
+      const next = sortCustomPresets(Array.from(byId.values())).slice(0, MAX_CUSTOM_PRESETS);
+      state.customPresets = next;
+      state.selectedPresetId = next[0]?.id || '';
+      saveCustomPresets();
+      renderControls();
+    } catch (err) {
+      // ignore invalid preset json
+    }
+  };
+  reader.readAsText(file);
 }
 
 function rand(list) {
@@ -1694,6 +1852,11 @@ function buildBaseLayout() {
                 <button id="presetApplyBtn" class="btn btn-small" data-i18n="applyPreset"></button>
                 <button id="presetDeleteBtn" class="btn btn-small" data-i18n="deletePreset"></button>
               </div>
+              <div class="preset-row">
+                <button id="presetExportBtn" class="btn btn-small" data-i18n="exportPreset"></button>
+                <button id="presetImportBtn" class="btn btn-small" data-i18n="importPreset"></button>
+                <input id="presetFileInput" type="file" accept=".json,application/json" class="hidden" />
+              </div>
             </div>
           </section>
 
@@ -1954,6 +2117,9 @@ function buildBaseLayout() {
     presetSelect: document.getElementById('presetSelect'),
     presetApplyBtn: document.getElementById('presetApplyBtn'),
     presetDeleteBtn: document.getElementById('presetDeleteBtn'),
+    presetExportBtn: document.getElementById('presetExportBtn'),
+    presetImportBtn: document.getElementById('presetImportBtn'),
+    presetFileInput: document.getElementById('presetFileInput'),
     paletteGrid: document.getElementById('paletteGrid'),
     dialogEnabled: document.getElementById('dialogEnabled'),
     dialogControls: document.getElementById('dialogControls'),
@@ -2123,19 +2289,46 @@ function dialogStyleIconSvg(styleKey, size) {
 }
 
 function saveCurrentPreset() {
-  const baseName = state.presetDraftName.trim().slice(0, 24);
+  const baseName = normalizePresetName(state.presetDraftName);
   const dict = t();
-  const name = baseName || `${dict.preset} ${state.customPresets.length + 1}`;
-  const preset = {
-    id: createPresetId(),
-    name,
-    settings: captureCurrentPresetSettings(),
-    createdAt: Date.now(),
-  };
+  const now = Date.now();
+  const settings = captureCurrentPresetSettings();
+  const existing = baseName
+    ? state.customPresets.find(
+        (preset) => presetNameKey(preset.name) === presetNameKey(baseName),
+      )
+    : null;
 
-  const next = [...state.customPresets, preset];
-  state.customPresets = next.slice(Math.max(0, next.length - MAX_CUSTOM_PRESETS));
-  state.selectedPresetId = preset.id;
+  if (existing) {
+    state.customPresets = sortCustomPresets(
+      state.customPresets.map((preset) =>
+        preset.id === existing.id
+          ? {
+              ...preset,
+              settings,
+              updatedAt: now,
+            }
+          : preset,
+      ),
+    ).slice(0, MAX_CUSTOM_PRESETS);
+    state.selectedPresetId = existing.id;
+  } else {
+    const draftName = baseName || generateAutoPresetName(dict, state.customPresets);
+    const name = ensureUniquePresetName(draftName, state.customPresets);
+    const preset = {
+      id: createPresetId(),
+      name,
+      settings,
+      createdAt: now,
+      updatedAt: now,
+    };
+    state.customPresets = sortCustomPresets([preset, ...state.customPresets]).slice(
+      0,
+      MAX_CUSTOM_PRESETS,
+    );
+    state.selectedPresetId = preset.id;
+  }
+
   state.presetDraftName = '';
   saveCustomPresets();
   renderControls();
@@ -2265,6 +2458,7 @@ function renderControls() {
   );
   runtime.refs.presetApplyBtn.disabled = !hasPreset;
   runtime.refs.presetDeleteBtn.disabled = !hasPreset;
+  runtime.refs.presetExportBtn.disabled = state.customPresets.length === 0;
 
   runtime.refs.paletteGrid.innerHTML = '';
   Object.entries(PALETTES).forEach(([key, palette]) => {
@@ -4100,6 +4294,21 @@ function bindEvents() {
   r.presetDeleteBtn.addEventListener('click', () => {
     deleteSelectedPreset();
     playClick();
+  });
+
+  r.presetExportBtn.addEventListener('click', () => {
+    exportCustomPresetsJson();
+    playClick();
+  });
+
+  r.presetImportBtn.addEventListener('click', () => {
+    r.presetFileInput.click();
+    playClick();
+  });
+
+  r.presetFileInput.addEventListener('change', (event) => {
+    importCustomPresetsJson(event.target.files[0]);
+    event.target.value = '';
   });
 
   r.downloadBtn.addEventListener('click', async () => {
