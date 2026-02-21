@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sora's Pixel Converter - Clone</title>
+    <meta
+      name="description"
+      content="Convert images into pixel art with a retro Windows 95-style interface."
+    />
+    <meta name="theme-color" content="#008080" />
+    <link rel="icon" type="image/svg+xml" href="./public/favicon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app"></div>
+
+    <template id="desktop-icon-template">
+      <button class="desktop-icon" type="button">
+        <span class="desktop-icon-art"></span>
+        <span class="desktop-icon-label"></span>
+      </button>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
