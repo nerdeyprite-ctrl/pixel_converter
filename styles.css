@@ -212,6 +212,22 @@ body {
   text-align: center;
 }
 
+.export-scale-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-scale-label {
+  margin: 0;
+  min-width: 64px;
+  font-size: 10px;
+}
+
+.export-scale-row .btn-row {
+  flex: 1;
+}
+
 .btn-row {
   display: flex;
   gap: 4px;

@@ -283,6 +283,7 @@ const I18N = {
     bottom: '下',
     onOff: 'ON / OFF',
     download: '↓ DOWNLOAD PNG',
+    pngScale: 'PNG倍率',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: '録画中...',
     glitch: 'グリッチ',
@@ -349,6 +350,7 @@ const I18N = {
     bottom: 'Bottom',
     onOff: 'ON / OFF',
     download: '↓ DOWNLOAD PNG',
+    pngScale: 'PNG Scale',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: 'RECORDING...',
     glitch: 'Glitch',
@@ -415,6 +417,7 @@ const I18N = {
     bottom: '아래',
     onOff: 'ON / OFF',
     download: '↓ DOWNLOAD PNG',
+    pngScale: 'PNG 배율',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: '녹화 중...',
     glitch: '글리치',
@@ -925,6 +928,7 @@ const state = {
   ghostEnabled: true,
   ghostMsg: '',
   frameTick: 0,
+  pngScale: 1,
   isMobile: window.innerWidth < 768,
   mobileTab: 'pixel',
   now: new Date(),
@@ -1616,6 +1620,10 @@ function buildBaseLayout() {
           </section>
 
           <button id="downloadBtn" class="btn btn-block" data-i18n="download"></button>
+          <div id="exportScaleRow" class="export-scale-row hidden">
+            <span class="label export-scale-label" data-i18n="pngScale"></span>
+            <div class="btn-row" id="pngScaleButtons"></div>
+          </div>
           <button id="videoBtn" class="btn btn-block" data-i18n="downloadVideo"></button>
         </div>
       </div>
@@ -1775,6 +1783,8 @@ function buildBaseLayout() {
     dialogPosRangeWrap: document.getElementById('dialogPosRangeWrap'),
     dialogPosLabel: document.getElementById('dialogPosLabel'),
     downloadBtn: document.getElementById('downloadBtn'),
+    exportScaleRow: document.getElementById('exportScaleRow'),
+    pngScaleButtons: document.getElementById('pngScaleButtons'),
     videoBtn: document.getElementById('videoBtn'),
     statusMain: document.getElementById('statusMain'),
     statusSize: document.getElementById('statusSize'),
@@ -2064,6 +2074,19 @@ function renderControls() {
   runtime.refs.dialogPosButtons.classList.toggle('hidden', !state.isMobile);
   runtime.refs.dialogPosRangeWrap.classList.toggle('hidden', state.isMobile);
 
+  runtime.refs.pngScaleButtons.innerHTML = '';
+  [1, 2, 3, 4].forEach((scale) => {
+    const btn = document.createElement('button');
+    btn.className = `btn btn-small ${state.pngScale === scale ? 'active' : ''}`;
+    btn.textContent = `x${scale}`;
+    btn.addEventListener('click', () => {
+      state.pngScale = scale;
+      playClick();
+      renderControls();
+    });
+    runtime.refs.pngScaleButtons.appendChild(btn);
+  });
+
   runtime.refs.downloadBtn.textContent = dict.download;
   runtime.refs.videoBtn.textContent = state.isRecording ? dict.recording : dict.downloadVideo;
   runtime.refs.videoBtn.disabled = state.isRecording;
@@ -2322,6 +2345,7 @@ function syncPreviewState() {
   const canVideo = (state.dialogEnabled && state.dialogText) || hasActiveFx();
   runtime.refs.videoBtn.classList.toggle('hidden', !hasImage || !canVideo);
   runtime.refs.downloadBtn.classList.toggle('hidden', !hasImage);
+  runtime.refs.exportScaleRow.classList.toggle('hidden', !hasImage);
 }
 
 function renderAll() {
@@ -2887,13 +2911,19 @@ function renderExportCanvas(
   return canvas;
 }
 
-function renderPngCanvas(typedChars = state.dialogText.length, showBlink = true, outCanvas) {
+function renderPngCanvas(
+  typedChars = state.dialogText.length,
+  showBlink = true,
+  outCanvas,
+  exportScale = state.pngScale,
+) {
   const preview = runtime.refs.previewCanvas;
   if (!preview || !preview.width || !preview.height) return null;
+  const scale = Math.max(1, Math.min(4, Math.round(exportScale || 1)));
 
   const canvas = outCanvas || document.createElement('canvas');
-  canvas.width = preview.width;
-  canvas.height = preview.height;
+  canvas.width = preview.width * scale;
+  canvas.height = preview.height * scale;
 
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2907,7 +2937,7 @@ function renderPngCanvas(typedChars = state.dialogText.length, showBlink = true,
     height: canvas.height,
     typedChars,
     showBlink,
-    scale: 1,
+    scale,
     dialogStyle: state.dialogStyle,
     dialogName: state.dialogName,
     dialogText: state.dialogText,
@@ -2920,7 +2950,7 @@ async function savePng() {
   if (!runtime.refs.previewCanvas.width) return;
 
   await document.fonts.load("bold 14px 'DotGothic16'");
-  const out = renderPngCanvas(state.dialogText.length, true);
+  const out = renderPngCanvas(state.dialogText.length, true, undefined, state.pngScale);
   if (!out) return;
 
   if (state.isMobile && navigator.canShare) {
@@ -3277,6 +3307,7 @@ function fitEditorScale(editor) {
   const canvas = runtime.refs.editorCanvas;
 
   const rect = wrap.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) return false;
   canvas.width = rect.width;
   canvas.height = rect.height;
 
@@ -3290,6 +3321,7 @@ function fitEditorScale(editor) {
   editor.scale = EDITOR_ZOOM_LEVELS[pickIndex];
   editor.panX = (rect.width - editor.width * editor.scale) / 2;
   editor.panY = (rect.height - editor.height * editor.scale) / 2;
+  return true;
 }
 
 function renderEditorCanvas() {
@@ -3404,14 +3436,19 @@ function openEditor() {
   if (!runtime.gridData) return;
 
   runtime.editor = createEditorState();
-  fitEditorScale(runtime.editor);
+  if (!runtime.editor) return;
   runtime.editorSpacePan = false;
   state.isEditorOpen = true;
   runtime.refs.editorModal.classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  renderEditorControls();
-  renderEditorCanvas();
+  requestAnimationFrame(() => {
+    if (!runtime.editor || !state.isEditorOpen) return;
+    const fitted = fitEditorScale(runtime.editor);
+    if (!fitted) return;
+    renderEditorControls();
+    renderEditorCanvas();
+  });
   playClick();
 }
 
