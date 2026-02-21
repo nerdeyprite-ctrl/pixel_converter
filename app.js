@@ -292,6 +292,14 @@ const I18N = {
     exportPreset: '書き出し',
     importPreset: '読み込み',
     noPreset: 'プリセットなし',
+    palettePreset: 'パレットプリセット',
+    palettePresetNamePh: 'パレット名',
+    addColor: '色追加',
+    clearColors: 'クリア',
+    savePalettePreset: '保存',
+    applyPalettePreset: '適用',
+    deletePalettePreset: '削除',
+    noPalettePreset: 'カスタムパレットなし',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: '録画中...',
     glitch: 'グリッチ',
@@ -367,6 +375,14 @@ const I18N = {
     exportPreset: 'Export',
     importPreset: 'Import',
     noPreset: 'No presets',
+    palettePreset: 'Palette Preset',
+    palettePresetNamePh: 'Palette name',
+    addColor: 'Add',
+    clearColors: 'Clear',
+    savePalettePreset: 'Save',
+    applyPalettePreset: 'Apply',
+    deletePalettePreset: 'Delete',
+    noPalettePreset: 'No custom palettes',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: 'RECORDING...',
     glitch: 'Glitch',
@@ -442,6 +458,14 @@ const I18N = {
     exportPreset: '내보내기',
     importPreset: '불러오기',
     noPreset: '프리셋 없음',
+    palettePreset: '팔레트 프리셋',
+    palettePresetNamePh: '팔레트 이름',
+    addColor: '색 추가',
+    clearColors: '초기화',
+    savePalettePreset: '저장',
+    applyPalettePreset: '적용',
+    deletePalettePreset: '삭제',
+    noPalettePreset: '커스텀 팔레트 없음',
     downloadVideo: '↓ DOWNLOAD VIDEO',
     recording: '녹화 중...',
     glitch: '글리치',
@@ -923,6 +947,9 @@ const ADJUSTMENT_DEFAULTS = {
 };
 const PRESET_STORAGE_KEY = 'pixel_converter_custom_presets_v1';
 const MAX_CUSTOM_PRESETS = 30;
+const PALETTE_PRESET_STORAGE_KEY = 'pixel_converter_custom_palette_presets_v1';
+const MAX_CUSTOM_PALETTE_PRESETS = 50;
+const MAX_CUSTOM_PALETTE_COLORS = 64;
 
 const state = {
   imageUrl: null,
@@ -958,6 +985,11 @@ const state = {
   customPresets: [],
   selectedPresetId: '',
   presetDraftName: '',
+  palettePresets: [],
+  selectedPalettePresetId: '',
+  palettePresetDraftName: '',
+  paletteDraftColor: '#ffffff',
+  paletteDraftColors: [],
   isMobile: window.innerWidth < 768,
   mobileTab: 'pixel',
   now: new Date(),
@@ -1016,9 +1048,109 @@ function createPresetId() {
   return `preset-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function palettePresetKey(presetId) {
+  return `custom:${presetId}`;
+}
+
+function palettePresetIdFromKey(paletteKey) {
+  if (typeof paletteKey !== 'string') return '';
+  if (!paletteKey.startsWith('custom:')) return '';
+  return paletteKey.slice('custom:'.length);
+}
+
+function getPaletteByKey(paletteKey) {
+  const builtIn = PALETTES[paletteKey];
+  if (builtIn) {
+    return {
+      key: paletteKey,
+      name: builtIn.name,
+      colors: builtIn.colors,
+      isCustom: false,
+      presetId: '',
+    };
+  }
+  const presetId = palettePresetIdFromKey(paletteKey);
+  if (!presetId) return null;
+  const preset = state.palettePresets.find((item) => item.id === presetId);
+  if (!preset) return null;
+  return {
+    key: palettePresetKey(preset.id),
+    name: preset.name,
+    colors: preset.colors,
+    isCustom: true,
+    presetId: preset.id,
+  };
+}
+
+function getAllPaletteEntries() {
+  const builtIn = Object.entries(PALETTES).map(([key, palette]) => ({
+    key,
+    name: palette.name,
+    colors: palette.colors,
+    isCustom: false,
+    presetId: '',
+  }));
+  const custom = state.palettePresets.map((preset) => ({
+    key: palettePresetKey(preset.id),
+    name: preset.name,
+    colors: preset.colors,
+    isCustom: true,
+    presetId: preset.id,
+  }));
+  return [...builtIn, ...custom];
+}
+
+function ensureValidPaletteKey(paletteKey) {
+  const resolved = getPaletteByKey(paletteKey);
+  if (resolved) return resolved.key;
+  return 'sora';
+}
+
+function normalizeRgbColor(input) {
+  if (!Array.isArray(input) || input.length < 3) return null;
+  const channels = input.slice(0, 3).map((value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    return clamp255(Math.round(num));
+  });
+  if (channels.some((value) => value === null)) return null;
+  return channels;
+}
+
+function rgbToHexColor(rgb) {
+  const normalized = normalizeRgbColor(rgb);
+  if (!normalized) return '#000000';
+  return `#${normalized.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function hexToRgbColor(hexColor) {
+  const hex = String(hexColor || '').trim().replace(/^#/, '');
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+  return [
+    parseInt(hex.slice(0, 2), 16),
+    parseInt(hex.slice(2, 4), 16),
+    parseInt(hex.slice(4, 6), 16),
+  ];
+}
+
+function sanitizePaletteColors(inputColors) {
+  if (!Array.isArray(inputColors)) return [];
+  const unique = new Set();
+  const colors = [];
+  inputColors.forEach((item) => {
+    const rgb = normalizeRgbColor(item);
+    if (!rgb) return;
+    const key = rgb.join(',');
+    if (unique.has(key)) return;
+    unique.add(key);
+    colors.push(rgb);
+  });
+  return colors.slice(0, MAX_CUSTOM_PALETTE_COLORS);
+}
+
 function sanitizePresetSettings(input = {}) {
   const pixelSize = [2, 3, 4, 5].includes(Number(input.pixelSize)) ? Number(input.pixelSize) : 3;
-  const paletteKey = PALETTES[input.paletteKey] ? input.paletteKey : 'sora';
+  const paletteKey = ensureValidPaletteKey(input.paletteKey);
 
   const effects = {};
   Object.keys(state.effects).forEach((key) => {
@@ -1149,12 +1281,87 @@ function sanitizeCustomPreset(rawPreset) {
   };
 }
 
+function sanitizeCustomPalettePreset(rawPreset) {
+  if (!rawPreset || typeof rawPreset !== 'object') return null;
+  const name = normalizePresetName(rawPreset.name);
+  if (!name) return null;
+
+  const id = String(rawPreset.id || createPresetId());
+  if (!id) return null;
+
+  const colors = sanitizePaletteColors(rawPreset.colors);
+  if (colors.length === 0) return null;
+
+  const createdAt = Number(rawPreset.createdAt) || Date.now();
+  const updatedAt = Number(rawPreset.updatedAt) || Number(rawPreset.createdAt) || createdAt;
+
+  return {
+    id,
+    name,
+    colors,
+    createdAt,
+    updatedAt,
+  };
+}
+
 function saveCustomPresets() {
   try {
     localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(state.customPresets));
   } catch (err) {
     // ignore storage errors
   }
+}
+
+function saveCustomPalettePresets() {
+  try {
+    localStorage.setItem(PALETTE_PRESET_STORAGE_KEY, JSON.stringify(state.palettePresets));
+  } catch (err) {
+    // ignore storage errors
+  }
+}
+
+function loadCustomPalettePresets() {
+  try {
+    const raw = localStorage.getItem(PALETTE_PRESET_STORAGE_KEY);
+    if (!raw) {
+      state.paletteKey = ensureValidPaletteKey(state.paletteKey);
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    const rawList = presetListFromPayload(parsed);
+    if (!Array.isArray(rawList)) {
+      state.paletteKey = ensureValidPaletteKey(state.paletteKey);
+      return;
+    }
+
+    const dedupe = new Set();
+    const list = sortCustomPresets(
+      rawList
+        .map(sanitizeCustomPalettePreset)
+        .filter(Boolean)
+        .filter((preset) => {
+          if (dedupe.has(preset.id)) return false;
+          dedupe.add(preset.id);
+          return true;
+        }),
+    ).slice(0, MAX_CUSTOM_PALETTE_PRESETS);
+
+    state.palettePresets = list;
+
+    const activeCustomPresetId = palettePresetIdFromKey(state.paletteKey);
+    if (activeCustomPresetId && list.some((preset) => preset.id === activeCustomPresetId)) {
+      state.selectedPalettePresetId = activeCustomPresetId;
+    } else if (list.some((preset) => preset.id === state.selectedPalettePresetId)) {
+      // keep current selection
+    } else {
+      state.selectedPalettePresetId = list[0]?.id || '';
+    }
+  } catch (err) {
+    state.palettePresets = [];
+    state.selectedPalettePresetId = '';
+  }
+
+  state.paletteKey = ensureValidPaletteKey(state.paletteKey);
 }
 
 function loadCustomPresets() {
@@ -1864,6 +2071,23 @@ function buildBaseLayout() {
             <div class="panel-title"><span data-i18n="palette"></span><span class="win-btn-row"><span class="win-btn">_</span><span class="win-btn">□</span><span class="win-btn">×</span></span></div>
             <div class="panel-body">
               <div class="palette-grid" id="paletteGrid"></div>
+
+              <label class="label" style="margin-top: 8px" data-i18n="palettePreset"></label>
+              <div class="preset-row">
+                <input id="paletteColorInput" class="palette-color-input" type="color" value="#ffffff" />
+                <button id="paletteColorAddBtn" class="btn btn-small" data-i18n="addColor"></button>
+                <button id="paletteColorClearBtn" class="btn btn-small" data-i18n="clearColors"></button>
+              </div>
+              <div id="paletteDraftSwatches" class="palette-draft-swatches"></div>
+              <div class="preset-row">
+                <input id="palettePresetName" type="text" maxlength="24" />
+                <button id="palettePresetSaveBtn" class="btn btn-small" data-i18n="savePalettePreset"></button>
+              </div>
+              <div class="preset-row">
+                <select id="palettePresetSelect"></select>
+                <button id="palettePresetApplyBtn" class="btn btn-small" data-i18n="applyPalettePreset"></button>
+                <button id="palettePresetDeleteBtn" class="btn btn-small" data-i18n="deletePalettePreset"></button>
+              </div>
             </div>
           </section>
 
@@ -2121,6 +2345,15 @@ function buildBaseLayout() {
     presetImportBtn: document.getElementById('presetImportBtn'),
     presetFileInput: document.getElementById('presetFileInput'),
     paletteGrid: document.getElementById('paletteGrid'),
+    paletteColorInput: document.getElementById('paletteColorInput'),
+    paletteColorAddBtn: document.getElementById('paletteColorAddBtn'),
+    paletteColorClearBtn: document.getElementById('paletteColorClearBtn'),
+    paletteDraftSwatches: document.getElementById('paletteDraftSwatches'),
+    palettePresetName: document.getElementById('palettePresetName'),
+    palettePresetSaveBtn: document.getElementById('palettePresetSaveBtn'),
+    palettePresetSelect: document.getElementById('palettePresetSelect'),
+    palettePresetApplyBtn: document.getElementById('palettePresetApplyBtn'),
+    palettePresetDeleteBtn: document.getElementById('palettePresetDeleteBtn'),
     dialogEnabled: document.getElementById('dialogEnabled'),
     dialogControls: document.getElementById('dialogControls'),
     dialogStyleButtons: document.getElementById('dialogStyleButtons'),
@@ -2191,6 +2424,7 @@ function renderI18n() {
   runtime.refs.dialogName.placeholder = dict.namePh;
   runtime.refs.dialogText.placeholder = dict.textPh;
   runtime.refs.presetName.placeholder = dict.presetNamePh;
+  runtime.refs.palettePresetName.placeholder = dict.palettePresetNamePh;
   runtime.refs.dialogPosLabel.textContent = state.isMobile
     ? dict.position
     : `${dict.position}: ${state.dialogPosition}%`;
@@ -2346,6 +2580,13 @@ function applySelectedPreset() {
 
   state.pixelSize = next.pixelSize;
   state.paletteKey = next.paletteKey;
+  const nextPalettePresetId = palettePresetIdFromKey(next.paletteKey);
+  if (
+    nextPalettePresetId &&
+    state.palettePresets.some((preset) => preset.id === nextPalettePresetId)
+  ) {
+    state.selectedPalettePresetId = nextPalettePresetId;
+  }
   state.effects = { ...next.effects };
   state.adjustments = { ...next.adjustments };
   state.dialogEnabled = next.dialogEnabled;
@@ -2374,6 +2615,153 @@ function deleteSelectedPreset() {
   state.selectedPresetId = state.customPresets[0]?.id || '';
   saveCustomPresets();
   renderControls();
+}
+
+function generateAutoPalettePresetName(dict, presets) {
+  const baseLabel = normalizePresetName(dict.palettePreset || dict.palette || 'Palette') || 'Palette';
+  let index = presets.length + 1;
+  let candidate = normalizePresetName(`${baseLabel} ${index}`);
+  while (presets.some((preset) => presetNameKey(preset.name) === presetNameKey(candidate))) {
+    index += 1;
+    candidate = normalizePresetName(`${baseLabel} ${index}`);
+  }
+  return candidate || `${baseLabel} ${Date.now().toString().slice(-4)}`;
+}
+
+function addPaletteDraftColor(hexColor) {
+  const rgb = hexToRgbColor(hexColor);
+  if (!rgb) return false;
+  const key = rgb.join(',');
+  if (state.paletteDraftColors.some((color) => color.join(',') === key)) {
+    state.paletteDraftColor = rgbToHexColor(rgb);
+    return false;
+  }
+  state.paletteDraftColors = [...state.paletteDraftColors, rgb].slice(0, MAX_CUSTOM_PALETTE_COLORS);
+  state.paletteDraftColor = rgbToHexColor(rgb);
+  return true;
+}
+
+function removePaletteDraftColorAt(index) {
+  if (!Number.isInteger(index)) return;
+  if (index < 0 || index >= state.paletteDraftColors.length) return;
+  state.paletteDraftColors = state.paletteDraftColors.filter((_, itemIndex) => itemIndex !== index);
+}
+
+function clearPaletteDraftColors() {
+  state.paletteDraftColors = [];
+}
+
+function saveCurrentPalettePreset() {
+  const colors = sanitizePaletteColors(state.paletteDraftColors);
+  if (colors.length === 0) return;
+
+  const baseName = normalizePresetName(state.palettePresetDraftName);
+  const dict = t();
+  const now = Date.now();
+  const existing = baseName
+    ? state.palettePresets.find(
+        (preset) => presetNameKey(preset.name) === presetNameKey(baseName),
+      )
+    : null;
+
+  let selectedId = '';
+
+  if (existing) {
+    selectedId = existing.id;
+    state.palettePresets = sortCustomPresets(
+      state.palettePresets.map((preset) =>
+        preset.id === existing.id
+          ? {
+              ...preset,
+              colors,
+              updatedAt: now,
+            }
+          : preset,
+      ),
+    ).slice(0, MAX_CUSTOM_PALETTE_PRESETS);
+  } else {
+    const draftName = baseName || generateAutoPalettePresetName(dict, state.palettePresets);
+    const name = ensureUniquePresetName(draftName, state.palettePresets);
+    const preset = {
+      id: createPresetId(),
+      name,
+      colors,
+      createdAt: now,
+      updatedAt: now,
+    };
+    selectedId = preset.id;
+    state.palettePresets = sortCustomPresets([preset, ...state.palettePresets]).slice(
+      0,
+      MAX_CUSTOM_PALETTE_PRESETS,
+    );
+  }
+
+  state.selectedPalettePresetId = selectedId;
+  state.palettePresetDraftName = '';
+  saveCustomPalettePresets();
+
+  const selectedPaletteKey = palettePresetKey(selectedId);
+  const activePaletteChanged = state.paletteKey === selectedPaletteKey;
+
+  renderControls();
+  renderStatus();
+
+  if (activePaletteChanged) {
+    if (state.sourceImage) {
+      convertCurrentImage();
+    } else {
+      syncFxLoop();
+    }
+  }
+}
+
+function applySelectedPalettePreset() {
+  if (!state.selectedPalettePresetId) return;
+  const preset = state.palettePresets.find((item) => item.id === state.selectedPalettePresetId);
+  if (!preset || !preset.colors.length) return;
+
+  const nextPaletteKey = palettePresetKey(preset.id);
+  const changed = state.paletteKey !== nextPaletteKey;
+  state.paletteKey = nextPaletteKey;
+
+  renderControls();
+  renderStatus();
+  triggerGhost('palette');
+
+  if (changed && state.sourceImage) {
+    convertCurrentImage();
+  } else {
+    syncFxLoop();
+  }
+}
+
+function deleteSelectedPalettePreset() {
+  if (!state.selectedPalettePresetId) return;
+
+  const deletedId = state.selectedPalettePresetId;
+  const deletedKey = palettePresetKey(deletedId);
+  const wasActive = state.paletteKey === deletedKey;
+  state.palettePresets = state.palettePresets.filter((preset) => preset.id !== deletedId);
+  state.selectedPalettePresetId = state.palettePresets[0]?.id || '';
+
+  if (wasActive) {
+    state.paletteKey = state.palettePresets[0]
+      ? palettePresetKey(state.palettePresets[0].id)
+      : 'sora';
+    state.paletteKey = ensureValidPaletteKey(state.paletteKey);
+  }
+
+  saveCustomPalettePresets();
+  renderControls();
+  renderStatus();
+
+  if (!wasActive) return;
+
+  if (state.sourceImage) {
+    convertCurrentImage();
+  } else {
+    syncFxLoop();
+  }
 }
 
 function renderControls() {
@@ -2460,10 +2848,20 @@ function renderControls() {
   runtime.refs.presetDeleteBtn.disabled = !hasPreset;
   runtime.refs.presetExportBtn.disabled = state.customPresets.length === 0;
 
+  state.paletteKey = ensureValidPaletteKey(state.paletteKey);
+  const activePalettePresetId = palettePresetIdFromKey(state.paletteKey);
+  if (
+    activePalettePresetId &&
+    state.palettePresets.some((preset) => preset.id === activePalettePresetId)
+  ) {
+    state.selectedPalettePresetId = activePalettePresetId;
+  }
+
   runtime.refs.paletteGrid.innerHTML = '';
-  Object.entries(PALETTES).forEach(([key, palette]) => {
+  getAllPaletteEntries().forEach((palette) => {
     const btn = document.createElement('button');
-    btn.className = `btn palette-item ${state.paletteKey === key ? 'active' : ''}`;
+    btn.className = `btn palette-item ${state.paletteKey === palette.key ? 'active' : ''}`;
+    if (palette.isCustom) btn.classList.add('custom');
 
     const swatches = document.createElement('span');
     swatches.className = 'palette-swatches';
@@ -2480,7 +2878,10 @@ function renderControls() {
     btn.appendChild(swatches);
     btn.appendChild(name);
     btn.addEventListener('click', () => {
-      state.paletteKey = key;
+      state.paletteKey = palette.key;
+      if (palette.isCustom) {
+        state.selectedPalettePresetId = palette.presetId;
+      }
       playClick();
       convertCurrentImage();
       triggerGhost('palette');
@@ -2489,6 +2890,61 @@ function renderControls() {
     });
     runtime.refs.paletteGrid.appendChild(btn);
   });
+
+  runtime.refs.paletteColorInput.value = state.paletteDraftColor;
+  runtime.refs.palettePresetName.value = state.palettePresetDraftName;
+
+  runtime.refs.paletteDraftSwatches.innerHTML = '';
+  if (state.paletteDraftColors.length === 0) {
+    const empty = document.createElement('span');
+    empty.className = 'palette-draft-empty';
+    empty.textContent = '-';
+    runtime.refs.paletteDraftSwatches.appendChild(empty);
+  } else {
+    state.paletteDraftColors.forEach((rgb, index) => {
+      const swatchBtn = document.createElement('button');
+      swatchBtn.type = 'button';
+      swatchBtn.className = 'palette-draft-swatch';
+      swatchBtn.style.background = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+      swatchBtn.title = `${rgbToHexColor(rgb).toUpperCase()} (${rgb.join(', ')})`;
+      swatchBtn.addEventListener('click', () => {
+        removePaletteDraftColorAt(index);
+        playClick();
+        renderControls();
+      });
+      runtime.refs.paletteDraftSwatches.appendChild(swatchBtn);
+    });
+  }
+
+  const palettePresetSelect = runtime.refs.palettePresetSelect;
+  palettePresetSelect.innerHTML = '';
+  if (state.palettePresets.length === 0) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = dict.noPalettePreset;
+    palettePresetSelect.appendChild(option);
+    state.selectedPalettePresetId = '';
+  } else {
+    if (!state.palettePresets.some((preset) => preset.id === state.selectedPalettePresetId)) {
+      state.selectedPalettePresetId = state.palettePresets[0].id;
+    }
+    state.palettePresets.forEach((preset) => {
+      const option = document.createElement('option');
+      option.value = preset.id;
+      option.textContent = preset.name;
+      palettePresetSelect.appendChild(option);
+    });
+    palettePresetSelect.value = state.selectedPalettePresetId;
+  }
+
+  const hasPalettePreset = Boolean(
+    state.selectedPalettePresetId &&
+      state.palettePresets.some((preset) => preset.id === state.selectedPalettePresetId),
+  );
+  runtime.refs.palettePresetApplyBtn.disabled = !hasPalettePreset;
+  runtime.refs.palettePresetDeleteBtn.disabled = !hasPalettePreset;
+  runtime.refs.palettePresetSaveBtn.disabled = state.paletteDraftColors.length === 0;
+  runtime.refs.paletteColorClearBtn.disabled = state.paletteDraftColors.length === 0;
 
   runtime.refs.dialogEnabled.checked = state.dialogEnabled;
   runtime.refs.dialogControls.classList.toggle('hidden', !state.dialogEnabled);
@@ -2587,7 +3043,8 @@ function renderStatus() {
   const dict = t();
   runtime.refs.statusMain.textContent = state.sourceImage ? dict.ready : dict.dropMsg;
   runtime.refs.statusSize.textContent = `${state.pixelSize}px`;
-  runtime.refs.statusPalette.textContent = PALETTES[state.paletteKey].name;
+  const palette = getPaletteByKey(state.paletteKey) || getPaletteByKey('sora');
+  runtime.refs.statusPalette.textContent = palette?.name || 'Sora';
 }
 
 function renderClock() {
@@ -2881,7 +3338,9 @@ function convertCurrentImage() {
       smallCtx.imageSmoothingQuality = 'medium';
       smallCtx.drawImage(img, 0, 0, gridW, gridH);
 
-      const palette = PALETTES[state.paletteKey].colors;
+      state.paletteKey = ensureValidPaletteKey(state.paletteKey);
+      const activePalette = getPaletteByKey(state.paletteKey) || getPaletteByKey('sora');
+      const palette = activePalette.colors;
       const imageData = smallCtx.getImageData(0, 0, gridW, gridH);
       const data = imageData.data;
       const indices = new Uint8Array(gridW * gridH);
@@ -2911,7 +3370,7 @@ function convertCurrentImage() {
         width: gridW,
         height: gridH,
         pixelSize: state.pixelSize,
-        palette: state.paletteKey,
+        palette: activePalette.key,
         colors: palette,
         indices,
       };
@@ -3517,7 +3976,7 @@ function importJson(file) {
         img.onload = () => {
           state.sourceImage = img;
           state.imageUrl = url;
-          if (data.palette && PALETTES[data.palette]) state.paletteKey = data.palette;
+          if (data.palette && getPaletteByKey(data.palette)) state.paletteKey = data.palette;
           state.pixelSize = px;
           convertCurrentImage();
           renderControls();
@@ -4311,6 +4770,53 @@ function bindEvents() {
     event.target.value = '';
   });
 
+  r.paletteColorInput.addEventListener('input', (event) => {
+    state.paletteDraftColor = event.target.value;
+  });
+
+  r.paletteColorAddBtn.addEventListener('click', () => {
+    addPaletteDraftColor(r.paletteColorInput.value || state.paletteDraftColor);
+    playClick();
+    renderControls();
+  });
+
+  r.paletteColorClearBtn.addEventListener('click', () => {
+    clearPaletteDraftColors();
+    playClick();
+    renderControls();
+  });
+
+  r.palettePresetName.addEventListener('input', (event) => {
+    state.palettePresetDraftName = event.target.value.slice(0, 24);
+  });
+
+  r.palettePresetName.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    saveCurrentPalettePreset();
+    playClick();
+  });
+
+  r.palettePresetSaveBtn.addEventListener('click', () => {
+    saveCurrentPalettePreset();
+    playClick();
+  });
+
+  r.palettePresetSelect.addEventListener('change', (event) => {
+    state.selectedPalettePresetId = event.target.value;
+    renderControls();
+  });
+
+  r.palettePresetApplyBtn.addEventListener('click', () => {
+    applySelectedPalettePreset();
+    playClick();
+  });
+
+  r.palettePresetDeleteBtn.addEventListener('click', () => {
+    deleteSelectedPalettePreset();
+    playClick();
+  });
+
   r.downloadBtn.addEventListener('click', async () => {
     await savePng();
     playClick();
@@ -4530,6 +5036,7 @@ function syncUiState() {
 
 function init() {
   buildBaseLayout();
+  loadCustomPalettePresets();
   loadCustomPresets();
   bindEvents();
 

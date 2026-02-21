@@ -297,6 +297,17 @@ body {
   padding: 4px 8px;
 }
 
+.palette-color-input {
+  flex: 0 0 48px;
+  min-width: 48px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  box-shadow: var(--shadow-sunken);
+  background: #fff;
+  cursor: pointer;
+}
+
 .palette-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -323,6 +334,34 @@ body {
 .palette-swatch {
   width: 6px;
   height: 6px;
+}
+
+.palette-item.custom {
+  border-color: #000080;
+}
+
+.palette-draft-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  min-height: 22px;
+  align-items: center;
+}
+
+.palette-draft-swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #000;
+  cursor: pointer;
+}
+
+.palette-draft-empty {
+  color: #808080;
+  font-size: 10px;
+  line-height: 1;
 }
 
 .dialog-style-btn {
