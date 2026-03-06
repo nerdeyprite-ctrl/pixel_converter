@@ -1,11 +1,11 @@
 {
-  "name": "Sora's Pixel Converter Clone",
-  "short_name": "PixelConv",
-  "description": "Convert images into pixel art with a retro Windows 95-style interface.",
+  "name": "nerpu's pixel converter?",
+  "short_name": "NerpuPix",
+  "description": "nerpu's pixel converter? - minimal pastel retro pixel conversion tool.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#008080",
-  "theme_color": "#008080",
+  "background_color": "#fff6fd",
+  "theme_color": "#f6cae5",
   "lang": "en",
   "scope": "/",
   "icons": [

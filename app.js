@@ -2,7 +2,7 @@ const FONT_FAMILY = "'DotGothic16', 'Courier New', monospace";
 
 const PALETTES = {
   sora: {
-    name: 'Sora',
+    name: 'Classic',
     colors: [
       [0, 0, 0],
       [8, 14, 32],
@@ -341,7 +341,7 @@ const I18N = {
     win95: 'Win95警告',
     terminal: 'ターミナル',
     processing: 'PROCESSING...',
-    about: 'readme',
+    about: 'about',
     aboutDesc:
       '画像をドット絵風に変換するツールです。\nパレット変更やRPG風ダイアログの\nオーバーレイも可能です。',
     license:
@@ -424,7 +424,7 @@ const I18N = {
     win95: 'Win95 Alert',
     terminal: 'Terminal',
     processing: 'PROCESSING...',
-    about: 'readme',
+    about: 'about',
     aboutDesc:
       'A tool that converts images into pixel art.\nYou can change palettes and overlay\nRPG-style dialog windows.',
     license:
@@ -507,7 +507,7 @@ const I18N = {
     win95: 'Win95 경고',
     terminal: '터미널',
     processing: 'PROCESSING...',
-    about: 'readme',
+    about: 'about',
     aboutDesc:
       '이미지를 도트 그림풍으로 변환하는 도구입니다.\n팔레트 변경과 RPG풍 대사창\n오버레이도 가능합니다.',
     license:
@@ -737,6 +737,8 @@ const I18N = {
       'As imagens geradas por esta ferramenta podem ser usadas\nlivremente para fins comerciais e não comerciais.\nO autor não se responsabiliza por danos.',
   },
 };
+
+const LANG_OPTIONS = ['ko', 'en', 'ja'];
 
 const GHOST_TEXT = {
   ja: {
@@ -1012,23 +1014,14 @@ const runtime = {
 
 function getDefaultLang() {
   const language = navigator.language || 'en';
-  if (language.startsWith('zh')) {
-    if (language.includes('TW') || language.includes('HK') || language.includes('Hant')) {
-      return 'zh-TW';
-    }
-    return 'zh-CN';
-  }
   if (language.startsWith('ko')) return 'ko';
   if (language.startsWith('ja')) return 'ja';
-  if (language.startsWith('es')) return 'es';
-  if (language.startsWith('fr')) return 'fr';
-  if (language.startsWith('de')) return 'de';
-  if (language.startsWith('pt')) return 'pt';
   return 'en';
 }
 
 function t() {
-  return { ...I18N.en, ...(I18N[state.lang] || I18N.ja) };
+  const lang = LANG_OPTIONS.includes(state.lang) ? state.lang : 'en';
+  return { ...I18N.en, ...(I18N[lang] || I18N.en) };
 }
 
 function clamp255(value) {
@@ -1154,7 +1147,7 @@ function sanitizePresetSettings(input = {}) {
 
   const effects = {};
   Object.keys(state.effects).forEach((key) => {
-    effects[key] = Boolean(input.effects?.[key]);
+    effects[key] = false;
   });
 
   const ranges = {
@@ -1875,7 +1868,7 @@ function drawPixelFrame(ctx, pixels, sliceRaw, x, y, width, height, scaleOverrid
 }
 
 function hasActiveFx() {
-  return Object.values(state.effects).some(Boolean);
+  return false;
 }
 
 function hasActiveAdjustments() {
@@ -1949,54 +1942,32 @@ function playToggle(on) {
 }
 
 function triggerGhost(type) {
-  const packs = GHOST_TEXT[state.lang] || GHOST_TEXT.en || GHOST_TEXT.ja;
-  const list = type === 'click' ? [...packs.click, ...packs.idle] : packs[type];
-  if (!list || list.length === 0) return;
-  state.ghostMsg = rand(list);
-  renderGhost();
-  if (runtime.ghostMsgTimer) clearTimeout(runtime.ghostMsgTimer);
-  runtime.ghostMsgTimer = setTimeout(() => {
-    state.ghostMsg = '';
-    renderGhost();
-  }, 5000);
+  void type;
 }
 
 function startGhostIdle() {
-  if (runtime.ghostIdleTimer) clearInterval(runtime.ghostIdleTimer);
-  runtime.ghostIdleTimer = setInterval(() => triggerGhost('idle'), 20000);
+  // Ghost assistant UI removed
 }
 
 function buildBaseLayout() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <button class="desktop-icon" id="iconReadme" aria-label="Readme">
-      <span class="desktop-icon-art"></span>
-      <span class="desktop-icon-label">readme</span>
-    </button>
-    <button class="desktop-icon" id="iconHome" aria-label="Homepage">
-      <span class="desktop-icon-art"></span>
-      <span class="desktop-icon-label">Homepage</span>
-    </button>
-    <button class="desktop-icon" id="iconX" aria-label="X link">
-      <span class="desktop-icon-art"></span>
-      <span class="desktop-icon-label">Heaven</span>
-    </button>
-
     <div class="main-window">
-      <div class="title-bar">
-        <span class="title-bar-title">PIXEL CONVERTER v1.0</span>
-        <span class="win-btn-row">
-          <span class="win-btn">_</span>
-          <span class="win-btn">□</span>
-          <span class="win-btn">×</span>
-        </span>
-      </div>
-      <div class="menu-bar">
-        <span data-i18n="menuFile"></span>
-        <span data-i18n="menuEdit"></span>
-        <span data-i18n="menuView"></span>
-        <span data-i18n="menuHelp"></span>
-      </div>
+      <header class="hero-header">
+        <div class="brand-stack">
+          <span class="brand-kicker">NERPU STUDIO</span>
+          <span class="brand-title">nerpu's pixel converter?</span>
+        </div>
+        <div class="header-controls">
+          <div class="menu-pills">
+            <span data-i18n="menuFile"></span>
+            <span data-i18n="menuEdit"></span>
+            <span data-i18n="menuView"></span>
+            <span data-i18n="menuHelp"></span>
+          </div>
+          <select id="langSelect" class="title-lang-select" aria-label="Language"></select>
+        </div>
+      </header>
 
       <div class="content-row">
         <div class="controls-col">
@@ -2007,13 +1978,10 @@ function buildBaseLayout() {
           </div>
 
           <section class="panel" id="pixelPanel">
-            <div class="panel-title"><span data-i18n="pixelSize"></span><span class="win-btn-row"><span class="win-btn">_</span><span class="win-btn">□</span><span class="win-btn">×</span></span></div>
+            <div class="panel-title"><span data-i18n="pixelSize"></span></div>
             <div class="panel-body">
               <label class="label" data-i18n="size"></label>
               <div class="btn-row" id="sizeButtons"></div>
-
-              <label class="label" style="margin-top: 8px" data-i18n="fx"></label>
-              <div class="fx-grid" id="fxButtons"></div>
 
               <label class="label" style="margin-top: 8px" data-i18n="adjust"></label>
               <div class="adjust-grid">
@@ -2068,7 +2036,7 @@ function buildBaseLayout() {
           </section>
 
           <section class="panel" id="palettePanel">
-            <div class="panel-title"><span data-i18n="palette"></span><span class="win-btn-row"><span class="win-btn">_</span><span class="win-btn">□</span><span class="win-btn">×</span></span></div>
+            <div class="panel-title"><span data-i18n="palette"></span></div>
             <div class="panel-body">
               <div class="palette-grid" id="paletteGrid"></div>
 
@@ -2092,7 +2060,7 @@ function buildBaseLayout() {
           </section>
 
           <section class="panel" id="dialogPanel">
-            <div class="panel-title"><span data-i18n="dialog"></span><span class="win-btn-row"><span class="win-btn">_</span><span class="win-btn">□</span><span class="win-btn">×</span></span></div>
+            <div class="panel-title"><span data-i18n="dialog"></span></div>
             <div class="panel-body" id="dialogPanelBody">
               <label class="checkbox-row">
                 <input id="dialogEnabled" type="checkbox" />
@@ -2133,7 +2101,7 @@ function buildBaseLayout() {
 
         <div class="preview-col">
           <section class="panel">
-            <div class="panel-title"><span data-i18n="preview"></span><span class="win-btn-row"><span class="win-btn">_</span><span class="win-btn">□</span><span class="win-btn">×</span></span></div>
+            <div class="panel-title"><span data-i18n="preview"></span></div>
             <div class="panel-body">
               <div class="preview-drop" id="previewDrop">
                 <input id="imageInput" type="file" accept="image/*" class="hidden" />
@@ -2197,31 +2165,6 @@ function buildBaseLayout() {
         <span class="status-cell" id="statusSize"></span>
         <span class="status-cell" id="statusPalette"></span>
       </div>
-    </div>
-
-    <div class="taskbar">
-      <button id="taskStart" class="btn task-btn small"><span style="font-size:13px">🪟</span> Start</button>
-      <button id="taskAbout" class="btn task-btn"><span style="font-size:10px">📄</span><span data-i18n="about"></span></button>
-      <button id="taskGhost" class="btn task-btn"><span style="font-size:10px">👻</span><span id="ghostTaskLabel">Sora Ghost</span></button>
-
-      <div style="position:relative" id="langWrap">
-        <button id="taskLang" class="btn task-btn"><span style="font-size:10px">🌐</span> <span id="taskLangLabel"></span></button>
-        <div id="langPop" class="lang-pop hidden"></div>
-      </div>
-
-      <button id="jsonExportBtn" class="btn task-btn small hidden">↓JSON</button>
-      <button id="jsonImportBtn" class="btn task-btn small hidden">↑JSON</button>
-
-      <div class="task-spacer"></div>
-      <div class="clock">
-        <span id="soundToggle" role="button" tabindex="0" aria-label="Sound toggle">🔊</span>
-        <span id="clockText"></span>
-      </div>
-    </div>
-
-    <div id="ghostWrap" class="ghost-wrap">
-      <div id="ghostMsg" class="ghost-msg hidden"></div>
-      <img id="ghostImage" class="ghost-img" src="./public/assets/sora_ghost.png" alt="Sora Ghost" />
     </div>
 
     <div id="aboutModal" class="modal">
@@ -2322,8 +2265,8 @@ function buildBaseLayout() {
     pixelPanel: document.getElementById('pixelPanel'),
     palettePanel: document.getElementById('palettePanel'),
     dialogPanel: document.getElementById('dialogPanel'),
+    langSelect: document.getElementById('langSelect'),
     sizeButtons: document.getElementById('sizeButtons'),
-    fxButtons: document.getElementById('fxButtons'),
     adjBrightness: document.getElementById('adjBrightness'),
     adjExposure: document.getElementById('adjExposure'),
     adjGrayscale: document.getElementById('adjGrayscale'),
@@ -2370,21 +2313,8 @@ function buildBaseLayout() {
     statusMain: document.getElementById('statusMain'),
     statusSize: document.getElementById('statusSize'),
     statusPalette: document.getElementById('statusPalette'),
-    taskStart: document.getElementById('taskStart'),
-    taskAbout: document.getElementById('taskAbout'),
-    taskGhost: document.getElementById('taskGhost'),
-    taskLang: document.getElementById('taskLang'),
-    taskLangLabel: document.getElementById('taskLangLabel'),
-    langPop: document.getElementById('langPop'),
-    langWrap: document.getElementById('langWrap'),
-    soundToggle: document.getElementById('soundToggle'),
-    clockText: document.getElementById('clockText'),
     jsonExportBtn: document.getElementById('jsonExportBtn'),
     jsonImportBtn: document.getElementById('jsonImportBtn'),
-    ghostWrap: document.getElementById('ghostWrap'),
-    ghostMsg: document.getElementById('ghostMsg'),
-    ghostImage: document.getElementById('ghostImage'),
-    ghostTaskLabel: document.getElementById('ghostTaskLabel'),
     aboutModal: document.getElementById('aboutModal'),
     aboutBackdrop: document.getElementById('aboutBackdrop'),
     aboutClose: document.getElementById('aboutClose'),
@@ -2407,9 +2337,6 @@ function buildBaseLayout() {
     editorSave: document.getElementById('editorSave'),
     editorCancel: document.getElementById('editorCancel'),
     editorHint: document.getElementById('editorHint'),
-    iconReadme: document.getElementById('iconReadme'),
-    iconHome: document.getElementById('iconHome'),
-    iconX: document.getElementById('iconX'),
   };
 }
 
@@ -2429,17 +2356,13 @@ function renderI18n() {
     ? dict.position
     : `${dict.position}: ${state.dialogPosition}%`;
   runtime.refs.loadingText.textContent = state.isRecording ? dict.recording : dict.processing;
-  runtime.refs.taskLangLabel.textContent = dict.label;
-  runtime.refs.ghostTaskLabel.textContent = state.lang === 'ja' ? '空Ghost' : 'Sora Ghost';
+  runtime.refs.langSelect.value = LANG_OPTIONS.includes(state.lang) ? state.lang : 'en';
   runtime.refs.mobileTabPixel.textContent = 'Pixel';
   runtime.refs.mobileTabPalette.textContent = dict.palette;
   runtime.refs.mobileTabDialog.textContent = dict.dialog;
-  runtime.refs.iconReadme.querySelector('.desktop-icon-label').textContent = dict.about;
-  runtime.refs.iconX.querySelector('.desktop-icon-label').textContent =
-    state.lang === 'ja' ? '天国' : 'Heaven';
 
-  runtime.refs.aboutTitle.textContent = `readme.txt - ${dict.about}`;
-  runtime.refs.aboutContent.innerHTML = `PIXEL CONVERTER v1.0\n================================\n\n${dict.aboutDesc}\n\n[License]\n${dict.license}\n\n--------------------------------\nAuthor: Ameniwa\nWeb: <a href=\"https://ameniwa.com\" target=\"_blank\" rel=\"noopener noreferrer\">ameniwa.com</a>\nX: @ameniwa_`;
+  runtime.refs.aboutTitle.textContent = `about.txt - nerpu's pixel converter?`;
+  runtime.refs.aboutContent.innerHTML = `NERPU'S PIXEL CONVERTER?\n==============================\n\n${dict.aboutDesc}\n\n[License]\n${dict.license}`;
 
   runtime.refs.editorUndo.textContent = dict.editorUndo;
   runtime.refs.editorRedo.textContent = dict.editorRedo;
@@ -2460,21 +2383,14 @@ function renderI18n() {
 }
 
 function renderLangMenu() {
-  const pop = runtime.refs.langPop;
-  pop.innerHTML = '';
-  Object.entries(I18N).forEach(([key, value]) => {
-    const option = document.createElement('div');
-    option.className = `lang-option ${state.lang === key ? 'active' : ''}`;
-    option.textContent = value.label;
-    option.addEventListener('click', () => {
-      state.lang = key;
-      state.isLangOpen = false;
-      playClick();
-      renderI18n();
-      syncUiState();
-      closeLangMenu();
-    });
-    pop.appendChild(option);
+  const select = runtime.refs.langSelect;
+  select.innerHTML = '';
+  LANG_OPTIONS.forEach((key) => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = I18N[key].label;
+    option.selected = state.lang === key;
+    select.appendChild(option);
   });
 }
 
@@ -2782,28 +2698,6 @@ function renderControls() {
     runtime.refs.sizeButtons.appendChild(btn);
   });
 
-  runtime.refs.fxButtons.innerHTML = '';
-  const fxOrder = [
-    ['glitch', dict.glitch],
-    ['crt', dict.crt],
-    ['paletteCycle', dict.paletteCycle],
-    ['ghost', dict.ghost],
-    ['ditherFade', dict.ditherFade],
-  ];
-  fxOrder.forEach(([key, label]) => {
-    const btn = document.createElement('button');
-    btn.className = `btn ${state.effects[key] ? 'active' : ''}`;
-    btn.style.fontSize = '10px';
-    btn.textContent = label;
-    btn.addEventListener('click', () => {
-      state.effects[key] = !state.effects[key];
-      playToggle(state.effects[key]);
-      renderControls();
-      syncFxLoop();
-    });
-    runtime.refs.fxButtons.appendChild(btn);
-  });
-
   const { adjustments } = state;
   runtime.refs.adjBrightness.value = String(adjustments.brightness);
   runtime.refs.adjExposure.value = String(adjustments.exposure);
@@ -3044,14 +2938,11 @@ function renderStatus() {
   runtime.refs.statusMain.textContent = state.sourceImage ? dict.ready : dict.dropMsg;
   runtime.refs.statusSize.textContent = `${state.pixelSize}px`;
   const palette = getPaletteByKey(state.paletteKey) || getPaletteByKey('sora');
-  runtime.refs.statusPalette.textContent = palette?.name || 'Sora';
+  runtime.refs.statusPalette.textContent = palette?.name || 'Classic';
 }
 
 function renderClock() {
-  runtime.refs.clockText.textContent = `${String(state.now.getHours()).padStart(2, '0')}:${String(
-    state.now.getMinutes(),
-  ).padStart(2, '0')}`;
-  runtime.refs.soundToggle.textContent = state.soundEnabled ? '🔊' : '🔇';
+  // Clock/taskbar UI removed
 }
 
 function openAbout() {
@@ -3067,15 +2958,11 @@ function closeAbout() {
 }
 
 function openLangMenu() {
-  state.isLangOpen = true;
-  runtime.refs.langPop.classList.remove('hidden');
-  runtime.refs.taskLang.classList.add('active');
+  // Deprecated: taskbar language popup removed
 }
 
 function closeLangMenu() {
-  state.isLangOpen = false;
-  runtime.refs.langPop.classList.add('hidden');
-  runtime.refs.taskLang.classList.remove('active');
+  // Deprecated: taskbar language popup removed
 }
 
 function setLoading(loading) {
@@ -3238,15 +3125,7 @@ function renderDialogOverlay() {
 }
 
 function renderGhost() {
-  runtime.refs.ghostWrap.classList.toggle('hidden', !state.ghostEnabled || state.isMobile);
-
-  if (!state.ghostEnabled || state.isMobile) {
-    runtime.refs.ghostMsg.classList.add('hidden');
-    return;
-  }
-
-  runtime.refs.ghostMsg.textContent = state.ghostMsg;
-  runtime.refs.ghostMsg.classList.toggle('hidden', !state.ghostMsg);
+  // Ghost companion UI removed
 }
 
 function escapeHtml(input) {
@@ -3265,7 +3144,7 @@ function syncPreviewState() {
   runtime.refs.emptyState.classList.toggle('hidden', hasImage);
   runtime.refs.editBtn.classList.toggle('hidden', !hasImage || !runtime.gridData);
 
-  const canVideo = (state.dialogEnabled && state.dialogText) || hasActiveFx();
+  const canVideo = state.dialogEnabled && state.dialogText;
   runtime.refs.videoBtn.classList.toggle('hidden', !hasImage || !canVideo);
   runtime.refs.downloadBtn.classList.toggle('hidden', !hasImage);
   runtime.refs.exportScaleRow.classList.toggle('hidden', !hasImage);
@@ -3275,7 +3154,6 @@ function renderAll() {
   renderI18n();
   renderControls();
   renderStatus();
-  renderClock();
   renderGhost();
   syncPreviewState();
 }
@@ -3400,12 +3278,6 @@ function applyEffectsFrame(frameIndex = state.frameTick) {
 
   const palette = runtime.gridData?.colors;
 
-  if (state.effects.crt) applyCrt(ctx, canvas.width, canvas.height);
-  if (state.effects.paletteCycle && palette)
-    applyPaletteCycle(ctx, canvas.width, canvas.height, palette, frameIndex);
-  if (state.effects.ghost) applyGhost(ctx, canvas.width, canvas.height, frameIndex);
-  if (state.effects.ditherFade) applyDitherFade(ctx, canvas.width, canvas.height, frameIndex);
-  if (state.effects.glitch) applyGlitch(ctx, canvas.width, canvas.height, state.pixelSize);
   if (hasActiveAdjustments()) applyAdjustments(ctx, canvas.width, canvas.height, state.adjustments);
   if (palette) applyPaletteLock(ctx, canvas.width, canvas.height, palette);
 }
@@ -3790,7 +3662,7 @@ function renderExportCanvas(
   ctx.fillStyle = '#fff';
   ctx.textBaseline = 'middle';
   ctx.font = `bold ${11 * scale}px ${FONT_FAMILY}`;
-  ctx.fillText("Sora's Pixel Converter", titleX + 4 * scale, titleY + titleH / 2);
+  ctx.fillText("nerpu's converter?", titleX + 4 * scale, titleY + titleH / 2);
 
   const btns = ['_', '□', '×'];
   let btnX = titleX + titleW - (16 * scale * 3 + 1 * scale * 2) - 2 * scale;
@@ -4835,62 +4707,16 @@ function bindEvents() {
     openEditor();
   });
 
-  r.taskAbout.addEventListener('click', () => {
-    if (state.isAboutOpen) {
-      closeAbout();
-    } else {
-      openAbout();
-    }
+  r.langSelect.addEventListener('change', (event) => {
+    const nextLang = event.target.value;
+    state.lang = LANG_OPTIONS.includes(nextLang) ? nextLang : 'en';
+    playClick();
+    renderI18n();
+    syncUiState();
   });
 
   r.aboutClose.addEventListener('click', closeAbout);
   r.aboutBackdrop.addEventListener('click', closeAbout);
-
-  r.taskGhost.addEventListener('click', () => {
-    state.ghostEnabled = !state.ghostEnabled;
-    playToggle(state.ghostEnabled);
-    renderGhost();
-    r.taskGhost.classList.toggle('active', state.ghostEnabled);
-  });
-
-  r.ghostImage.addEventListener('click', () => {
-    triggerGhost('click');
-    playClick();
-  });
-
-  r.taskLang.addEventListener('click', () => {
-    if (state.isLangOpen) {
-      closeLangMenu();
-    } else {
-      openLangMenu();
-      playClick();
-    }
-  });
-
-  document.addEventListener('mousedown', (event) => {
-    if (!state.isLangOpen) return;
-    if (!r.langWrap.contains(event.target)) {
-      closeLangMenu();
-    }
-  });
-
-  r.soundToggle.addEventListener('click', () => {
-    state.soundEnabled = !state.soundEnabled;
-    renderClock();
-  });
-
-  r.soundToggle.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    state.soundEnabled = !state.soundEnabled;
-    renderClock();
-  });
-
-  r.iconReadme.addEventListener('dblclick', () => openAbout());
-  r.iconHome.addEventListener('dblclick', () => window.open('https://ameniwa.com', '_blank', 'noopener,noreferrer'));
-  r.iconX.addEventListener('dblclick', () => window.open('https://x.com/ameniwa_', '_blank', 'noopener,noreferrer'));
-
-  r.taskStart.addEventListener('click', playClick);
 
   r.mobileTabPixel.addEventListener('click', () => {
     state.mobileTab = 'pixel';
@@ -4908,7 +4734,11 @@ function bindEvents() {
     renderControls();
   });
 
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  if (
+    (location.hostname === 'localhost' || location.hostname === '127.0.0.1') &&
+    r.jsonExportBtn &&
+    r.jsonImportBtn
+  ) {
     r.jsonExportBtn.classList.remove('hidden');
     r.jsonImportBtn.classList.remove('hidden');
 
@@ -5044,13 +4874,6 @@ function init() {
   renderAll();
   syncPreviewState();
   renderDialogOverlay();
-
-  runtime.clockTimer = setInterval(() => {
-    state.now = new Date();
-    renderClock();
-  }, 60_000);
-
-  startGhostIdle();
 }
 
 init();
