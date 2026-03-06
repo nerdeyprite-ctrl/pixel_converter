@@ -1,4 +1,4 @@
-# nerpu's pixel converter?
+# nerpu's pixel converter
 
 ## Run
 정적 파일 앱입니다.

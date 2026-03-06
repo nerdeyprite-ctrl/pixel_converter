@@ -1,7 +1,7 @@
 {
-  "name": "nerpu's pixel converter?",
+  "name": "nerpu's pixel converter",
   "short_name": "NerpuPix",
-  "description": "nerpu's pixel converter? - minimal pastel retro pixel conversion tool.",
+  "description": "nerpu's pixel converter - minimal pastel retro pixel conversion tool.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fff6fd",
@@ -10,9 +10,9 @@
   "scope": "/",
   "icons": [
     {
-      "src": "./public/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./public/nerpu-favicon.png",
+      "sizes": "64x64",
+      "type": "image/png",
       "purpose": "any"
     },
     {

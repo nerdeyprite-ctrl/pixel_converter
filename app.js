@@ -1956,7 +1956,7 @@ function buildBaseLayout() {
       <header class="hero-header">
         <div class="brand-stack">
           <span class="brand-kicker">NERPU STUDIO</span>
-          <span class="brand-title">nerpu's pixel converter?</span>
+          <span class="brand-title">nerpu's pixel converter</span>
         </div>
         <div class="header-controls">
           <div class="menu-pills">
@@ -2361,7 +2361,7 @@ function renderI18n() {
   runtime.refs.mobileTabPalette.textContent = dict.palette;
   runtime.refs.mobileTabDialog.textContent = dict.dialog;
 
-  runtime.refs.aboutTitle.textContent = `about.txt - nerpu's pixel converter?`;
+  runtime.refs.aboutTitle.textContent = `about.txt - nerpu's pixel converter`;
   runtime.refs.aboutContent.innerHTML = `NERPU'S PIXEL CONVERTER?\n==============================\n\n${dict.aboutDesc}\n\n[License]\n${dict.license}`;
 
   runtime.refs.editorUndo.textContent = dict.editorUndo;
