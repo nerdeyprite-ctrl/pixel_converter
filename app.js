@@ -4,23 +4,28 @@ const PALETTES = {
   sora: {
     name: 'Classic',
     colors: [
-      [0, 0, 0],
-      [8, 14, 32],
-      [22, 32, 60],
-      [36, 54, 92],
-      [52, 76, 120],
-      [72, 104, 152],
-      [100, 140, 184],
-      [168, 148, 40],
-      [220, 200, 90],
-      [248, 236, 160],
-      [255, 252, 228],
-      [224, 160, 128],
+      [18, 16, 29],
+      [38, 32, 56],
+      [62, 53, 84],
+      [96, 84, 124],
+      [139, 126, 164],
+      [188, 176, 208],
+      [234, 228, 247],
+      [255, 245, 236],
+      [255, 216, 214],
+      [255, 184, 203],
+      [243, 151, 188],
+      [197, 128, 182],
+      [145, 180, 230],
+      [121, 219, 219],
+      [163, 226, 180],
+      [243, 214, 152],
     ],
   },
   gameboy: {
     name: 'Game Boy',
     colors: [
+      // Original Nintendo DMG-01 4-shade green palette
       [15, 56, 15],
       [48, 98, 48],
       [139, 172, 15],
@@ -30,27 +35,29 @@ const PALETTES = {
   nes: {
     name: 'NES',
     colors: [
+      // Curated from authentic NES 2C02 palette values
       [0, 0, 0],
-      [252, 252, 252],
-      [188, 188, 188],
+      [60, 60, 60],
       [124, 124, 124],
-      [228, 0, 8],
+      [188, 188, 188],
+      [252, 252, 252],
+      [0, 0, 252],
+      [104, 68, 252],
+      [216, 0, 204],
       [248, 56, 0],
+      [228, 0, 88],
       [248, 184, 0],
-      [172, 124, 0],
+      [252, 228, 160],
       [0, 184, 0],
       [88, 216, 84],
       [0, 168, 68],
       [0, 232, 216],
-      [0, 120, 248],
-      [104, 68, 252],
-      [216, 0, 204],
-      [248, 120, 88],
     ],
   },
   cga: {
     name: 'CGA',
     colors: [
+      // IBM CGA 4-color palette (high-intensity cyan/magenta/white)
       [0, 0, 0],
       [85, 255, 255],
       [255, 85, 255],
@@ -60,22 +67,23 @@ const PALETTES = {
   c64: {
     name: 'C64',
     colors: [
+      // Commodore 64 default palette (Pepto/VICE-compatible values)
       [0, 0, 0],
       [255, 255, 255],
-      [136, 0, 0],
-      [170, 255, 238],
-      [204, 68, 204],
-      [0, 204, 85],
-      [0, 0, 170],
-      [238, 238, 119],
-      [136, 68, 0],
-      [102, 68, 0],
-      [255, 119, 119],
-      [51, 51, 51],
-      [119, 119, 119],
-      [170, 255, 102],
-      [0, 136, 255],
-      [187, 187, 187],
+      [136, 57, 50],
+      [103, 182, 189],
+      [139, 63, 150],
+      [85, 160, 73],
+      [64, 49, 141],
+      [191, 206, 114],
+      [139, 84, 41],
+      [87, 66, 0],
+      [184, 105, 98],
+      [80, 80, 80],
+      [120, 120, 120],
+      [148, 224, 137],
+      [120, 105, 196],
+      [159, 159, 159],
     ],
   },
   pico8: {
@@ -123,142 +131,155 @@ const PALETTES = {
   pastel: {
     name: 'Pastel',
     colors: [
-      [255, 179, 186],
-      [255, 223, 186],
-      [255, 255, 186],
-      [186, 255, 201],
-      [186, 225, 255],
-      [218, 186, 255],
-      [255, 186, 243],
-      [255, 255, 255],
-      [200, 200, 200],
-      [120, 120, 120],
-      [60, 60, 60],
-      [0, 0, 0],
+      [34, 29, 48],
+      [66, 55, 86],
+      [102, 87, 129],
+      [142, 122, 170],
+      [188, 168, 208],
+      [232, 220, 241],
+      [255, 244, 250],
+      [255, 227, 231],
+      [255, 205, 220],
+      [246, 179, 209],
+      [224, 160, 223],
+      [182, 190, 245],
+      [152, 222, 244],
+      [170, 239, 220],
+      [207, 236, 178],
+      [247, 222, 174],
     ],
   },
   mono: {
     name: 'Mono',
     colors: [
       [0, 0, 0],
-      [34, 34, 34],
-      [68, 68, 68],
-      [102, 102, 102],
+      [16, 16, 16],
+      [32, 32, 32],
+      [52, 52, 52],
+      [76, 76, 76],
+      [104, 104, 104],
       [136, 136, 136],
-      [170, 170, 170],
-      [204, 204, 204],
-      [238, 238, 238],
+      [172, 172, 172],
+      [208, 208, 208],
+      [236, 236, 236],
       [255, 255, 255],
     ],
   },
   sepia: {
     name: 'Sepia',
     colors: [
-      [44, 28, 6],
-      [72, 52, 18],
-      [102, 78, 36],
-      [138, 110, 60],
-      [170, 142, 88],
-      [198, 176, 122],
-      [222, 204, 160],
-      [242, 230, 200],
-      [255, 245, 230],
+      [33, 24, 16],
+      [52, 38, 24],
+      [74, 54, 34],
+      [98, 72, 46],
+      [124, 92, 60],
+      [151, 114, 77],
+      [179, 139, 97],
+      [206, 167, 121],
+      [230, 197, 151],
+      [249, 228, 190],
     ],
   },
   sunset: {
     name: 'Sunset',
     colors: [
-      [13, 2, 33],
-      [44, 6, 69],
-      [87, 10, 82],
-      [140, 15, 75],
-      [191, 36, 51],
-      [224, 80, 29],
-      [240, 134, 28],
-      [248, 190, 53],
-      [255, 237, 120],
-      [255, 255, 230],
+      [16, 9, 36],
+      [33, 12, 62],
+      [58, 18, 90],
+      [92, 25, 120],
+      [133, 37, 136],
+      [176, 54, 130],
+      [216, 74, 113],
+      [239, 103, 90],
+      [252, 140, 70],
+      [255, 181, 89],
+      [255, 221, 130],
+      [255, 247, 193],
     ],
   },
   ocean: {
     name: 'Ocean',
     colors: [
-      [0, 20, 40],
-      [0, 40, 80],
-      [0, 80, 120],
-      [0, 120, 160],
-      [0, 160, 200],
-      [40, 200, 220],
-      [80, 220, 240],
-      [160, 240, 255],
-      [200, 248, 255],
-      [255, 255, 255],
+      [6, 18, 42],
+      [8, 34, 68],
+      [10, 54, 96],
+      [15, 78, 127],
+      [21, 109, 159],
+      [30, 145, 187],
+      [47, 177, 207],
+      [78, 207, 224],
+      [118, 230, 236],
+      [166, 244, 245],
+      [210, 251, 249],
+      [242, 255, 252],
     ],
   },
   earth: {
     name: 'Earth',
     colors: [
-      [34, 32, 28],
-      [69, 60, 44],
-      [107, 95, 70],
-      [140, 128, 96],
-      [168, 156, 120],
-      [96, 128, 56],
-      [64, 96, 48],
-      [140, 96, 64],
-      [192, 160, 112],
-      [220, 200, 168],
+      [24, 22, 20],
+      [45, 40, 33],
+      [67, 58, 45],
+      [93, 78, 56],
+      [121, 100, 69],
+      [151, 126, 82],
+      [97, 123, 63],
+      [71, 98, 55],
+      [124, 110, 82],
+      [164, 144, 107],
+      [201, 181, 139],
+      [230, 214, 178],
     ],
   },
   sakura: {
     name: 'Sakura',
     colors: [
-      [43, 30, 26],
-      [80, 56, 44],
-      [52, 80, 48],
-      [120, 164, 84],
-      [156, 48, 72],
-      [200, 80, 108],
-      [232, 140, 164],
-      [248, 196, 208],
-      [255, 232, 238],
-      [255, 255, 255],
-      [176, 164, 200],
-      [140, 180, 220],
+      [35, 25, 33],
+      [64, 43, 59],
+      [93, 62, 84],
+      [126, 85, 110],
+      [162, 110, 133],
+      [198, 136, 156],
+      [228, 169, 187],
+      [246, 203, 214],
+      [255, 232, 239],
+      [255, 246, 250],
+      [194, 205, 236],
+      [153, 183, 224],
     ],
   },
   cyber: {
     name: 'Cyber',
     colors: [
-      [8, 4, 16],
-      [20, 8, 40],
-      [48, 12, 64],
-      [100, 20, 100],
-      [180, 20, 100],
-      [255, 40, 120],
-      [255, 140, 200],
-      [10, 40, 80],
-      [0, 160, 200],
-      [80, 240, 255],
-      [200, 160, 255],
-      [255, 255, 255],
+      [8, 10, 24],
+      [17, 20, 45],
+      [34, 29, 74],
+      [66, 37, 113],
+      [104, 43, 147],
+      [146, 52, 173],
+      [202, 69, 208],
+      [255, 94, 214],
+      [27, 58, 120],
+      [19, 117, 188],
+      [43, 191, 223],
+      [170, 244, 255],
     ],
   },
   horror: {
     name: 'Horror',
     colors: [
       [0, 0, 0],
-      [24, 4, 4],
-      [60, 8, 8],
-      [120, 16, 16],
-      [180, 20, 20],
-      [220, 60, 40],
-      [40, 44, 16],
-      [72, 80, 32],
-      [48, 24, 48],
-      [80, 72, 68],
-      [200, 180, 140],
-      [240, 220, 190],
+      [19, 11, 12],
+      [42, 16, 19],
+      [71, 24, 29],
+      [104, 36, 40],
+      [140, 50, 49],
+      [60, 52, 28],
+      [89, 79, 41],
+      [41, 32, 50],
+      [71, 60, 70],
+      [134, 112, 92],
+      [189, 164, 134],
     ],
   },
 };
@@ -1167,7 +1188,7 @@ function sanitizePresetSettings(input = {}) {
   });
 
   const dialogStyle = DIALOG_THEMES[input.dialogStyle] ? input.dialogStyle : 'win95';
-  const dialogEnabled = Boolean(input.dialogEnabled);
+  const dialogEnabled = false;
   const dialogPosition = Math.round(clampNumber(input.dialogPosition, 10, 100, 70));
   const pngScale = [1, 2, 3, 4].includes(Number(input.pngScale)) ? Number(input.pngScale) : 1;
 
@@ -1959,24 +1980,69 @@ function buildBaseLayout() {
           <span class="brand-title">nerpu's pixel converter</span>
         </div>
         <div class="header-controls">
-          <div class="menu-pills">
-            <span data-i18n="menuFile"></span>
-            <span data-i18n="menuEdit"></span>
-            <span data-i18n="menuView"></span>
-            <span data-i18n="menuHelp"></span>
-          </div>
           <select id="langSelect" class="title-lang-select" aria-label="Language"></select>
         </div>
       </header>
-
-      <div class="content-row">
-        <div class="controls-col">
-          <div class="mobile-tabs hidden" id="mobileTabs">
-            <button id="mobileTabPixel" class="btn mobile-tab" type="button">Pixel</button>
-            <button id="mobileTabPalette" class="btn mobile-tab" type="button">Palette</button>
-            <button id="mobileTabDialog" class="btn mobile-tab" type="button">Dialog</button>
+      <div class="workspace-stack">
+        <section class="panel preview-panel-main">
+          <div class="panel-title"><span data-i18n="preview"></span></div>
+          <div class="panel-body">
+            <div class="preview-drop" id="previewDrop">
+              <input id="imageInput" type="file" accept="image/*" class="hidden" />
+              <input id="jsonInput" type="file" accept=".json" class="hidden" />
+              <canvas id="previewCanvas" class="preview-canvas hidden"></canvas>
+              <div class="overlay-container" id="overlayContainer"></div>
+              <div id="loadingMask" class="loading-mask hidden">
+                <svg class="hourglass" viewBox="0 0 12 16" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="0" width="10" height="1" fill="#c0c0c0" />
+                  <rect x="1" y="1" width="10" height="1" fill="#808080" />
+                  <rect x="2" y="2" width="1" height="1" fill="#808080" />
+                  <rect x="9" y="2" width="1" height="1" fill="#808080" />
+                  <rect x="3" y="2" width="6" height="1" fill="#c0a000" />
+                  <rect x="3" y="3" width="1" height="1" fill="#808080" />
+                  <rect x="8" y="3" width="1" height="1" fill="#808080" />
+                  <rect x="4" y="3" width="4" height="1" fill="#c0a000" />
+                  <rect x="4" y="4" width="1" height="1" fill="#808080" />
+                  <rect x="7" y="4" width="1" height="1" fill="#808080" />
+                  <rect x="5" y="4" width="2" height="1" fill="#c0a000" />
+                  <rect x="5" y="5" width="2" height="1" fill="#808080" />
+                  <rect x="5" y="6" width="2" height="1" fill="#c0a000" />
+                  <rect x="5" y="7" width="2" height="1" fill="#808080" />
+                  <rect x="4" y="8" width="1" height="1" fill="#808080" />
+                  <rect x="7" y="8" width="1" height="1" fill="#808080" />
+                  <rect x="5" y="8" width="2" height="1" fill="#c0a000" />
+                  <rect x="3" y="9" width="1" height="1" fill="#808080" />
+                  <rect x="8" y="9" width="1" height="1" fill="#808080" />
+                  <rect x="4" y="9" width="4" height="1" fill="#c0a000" />
+                  <rect x="2" y="10" width="1" height="1" fill="#808080" />
+                  <rect x="9" y="10" width="1" height="1" fill="#808080" />
+                  <rect x="3" y="10" width="6" height="1" fill="#c0a000" />
+                  <rect x="1" y="11" width="10" height="1" fill="#808080" />
+                  <rect x="1" y="12" width="10" height="1" fill="#c0c0c0" />
+                </svg>
+                <div id="loadingText"></div>
+              </div>
+              <button id="editBtn" class="btn btn-small hidden" style="position:absolute;top:8px;right:8px;z-index:10" data-i18n="edit"></button>
+              <div id="emptyState" class="preview-empty">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="2" y="4" width="28" height="24" stroke="#808080" stroke-width="2" />
+                  <circle cx="11" cy="13" r="3" fill="#808080" />
+                  <path d="M4 24 L12 16 L18 22 L22 18 L28 24" stroke="#808080" stroke-width="2" fill="none" />
+                </svg>
+              </div>
+            </div>
           </div>
+          <div class="preview-actions">
+            <button id="downloadBtn" class="btn btn-block" data-i18n="download"></button>
+            <div id="exportScaleRow" class="export-scale-row hidden">
+              <span class="label export-scale-label" data-i18n="pngScale"></span>
+              <div class="btn-row" id="pngScaleButtons"></div>
+            </div>
+            <button id="videoBtn" class="btn btn-block" data-i18n="downloadVideo"></button>
+          </div>
+        </section>
 
+        <div class="tool-panels-row">
           <section class="panel" id="pixelPanel">
             <div class="panel-title"><span data-i18n="pixelSize"></span></div>
             <div class="panel-body">
@@ -2058,105 +2124,25 @@ function buildBaseLayout() {
               </div>
             </div>
           </section>
-
-          <section class="panel" id="dialogPanel">
-            <div class="panel-title"><span data-i18n="dialog"></span></div>
-            <div class="panel-body" id="dialogPanelBody">
-              <label class="checkbox-row">
-                <input id="dialogEnabled" type="checkbox" />
-                <span data-i18n="onOff"></span>
-              </label>
-
-              <div id="dialogControls" class="hidden" style="margin-top: 10px">
-                <div>
-                  <span class="label" data-i18n="style"></span>
-                  <div class="btn-row" id="dialogStyleButtons" style="gap:4px; flex-wrap: wrap"></div>
-                </div>
-
-                <div style="margin-top: 8px">
-                  <span class="label" data-i18n="name"></span>
-                  <input id="dialogName" type="text" />
-                </div>
-
-                <div style="margin-top: 8px">
-                  <span class="label" data-i18n="text"></span>
-                  <textarea id="dialogText" rows="3"></textarea>
-                </div>
-
-                <div style="margin-top: 8px">
-                  <span class="label" id="dialogPosLabel"></span>
-                  <div class="btn-row hidden" id="dialogPosButtons"></div>
-                  <div id="dialogPosRangeWrap">
-                    <input id="dialogPosition" type="range" min="10" max="100" />
-                    <div style="display:flex; justify-content:space-between; font-size:10px; color:#808080; margin-top:2px">
-                      <span data-i18n="top"></span>
-                      <span data-i18n="bottom"></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
         </div>
 
-        <div class="preview-col">
-          <section class="panel">
-            <div class="panel-title"><span data-i18n="preview"></span></div>
-            <div class="panel-body">
-              <div class="preview-drop" id="previewDrop">
-                <input id="imageInput" type="file" accept="image/*" class="hidden" />
-                <input id="jsonInput" type="file" accept=".json" class="hidden" />
-                <canvas id="previewCanvas" class="preview-canvas hidden"></canvas>
-                <div class="overlay-container" id="overlayContainer"></div>
-                <div id="loadingMask" class="loading-mask hidden">
-                  <svg class="hourglass" viewBox="0 0 12 16" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="1" y="0" width="10" height="1" fill="#c0c0c0" />
-                    <rect x="1" y="1" width="10" height="1" fill="#808080" />
-                    <rect x="2" y="2" width="1" height="1" fill="#808080" />
-                    <rect x="9" y="2" width="1" height="1" fill="#808080" />
-                    <rect x="3" y="2" width="6" height="1" fill="#c0a000" />
-                    <rect x="3" y="3" width="1" height="1" fill="#808080" />
-                    <rect x="8" y="3" width="1" height="1" fill="#808080" />
-                    <rect x="4" y="3" width="4" height="1" fill="#c0a000" />
-                    <rect x="4" y="4" width="1" height="1" fill="#808080" />
-                    <rect x="7" y="4" width="1" height="1" fill="#808080" />
-                    <rect x="5" y="4" width="2" height="1" fill="#c0a000" />
-                    <rect x="5" y="5" width="2" height="1" fill="#808080" />
-                    <rect x="5" y="6" width="2" height="1" fill="#c0a000" />
-                    <rect x="5" y="7" width="2" height="1" fill="#808080" />
-                    <rect x="4" y="8" width="1" height="1" fill="#808080" />
-                    <rect x="7" y="8" width="1" height="1" fill="#808080" />
-                    <rect x="5" y="8" width="2" height="1" fill="#c0a000" />
-                    <rect x="3" y="9" width="1" height="1" fill="#808080" />
-                    <rect x="8" y="9" width="1" height="1" fill="#808080" />
-                    <rect x="4" y="9" width="4" height="1" fill="#c0a000" />
-                    <rect x="2" y="10" width="1" height="1" fill="#808080" />
-                    <rect x="9" y="10" width="1" height="1" fill="#808080" />
-                    <rect x="3" y="10" width="6" height="1" fill="#c0a000" />
-                    <rect x="1" y="11" width="10" height="1" fill="#808080" />
-                    <rect x="1" y="12" width="10" height="1" fill="#c0c0c0" />
-                  </svg>
-                  <div id="loadingText"></div>
-                </div>
-                <button id="editBtn" class="btn btn-small hidden" style="position:absolute;top:8px;right:8px;z-index:10" data-i18n="edit"></button>
-                <div id="emptyState" class="preview-empty">
-                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="2" y="4" width="28" height="24" stroke="#808080" stroke-width="2" />
-                    <circle cx="11" cy="13" r="3" fill="#808080" />
-                    <path d="M4 24 L12 16 L18 22 L22 18 L28 24" stroke="#808080" stroke-width="2" fill="none" />
-                  </svg>
-                  <div><span data-i18n="dragDrop"></span><br /><span data-i18n="orClick"></span></div>
-                </div>
-              </div>
-            </div>
-          </section>
+        <div class="mobile-tabs hidden" id="mobileTabs">
+          <button id="mobileTabPixel" class="btn mobile-tab" type="button">Pixel</button>
+          <button id="mobileTabPalette" class="btn mobile-tab" type="button">Palette</button>
+          <button id="mobileTabDialog" class="btn mobile-tab" type="button">Dialog</button>
+        </div>
 
-          <button id="downloadBtn" class="btn btn-block" data-i18n="download"></button>
-          <div id="exportScaleRow" class="export-scale-row hidden">
-            <span class="label export-scale-label" data-i18n="pngScale"></span>
-            <div class="btn-row" id="pngScaleButtons"></div>
-          </div>
-          <button id="videoBtn" class="btn btn-block" data-i18n="downloadVideo"></button>
+        <div id="dialogPanel" class="hidden" aria-hidden="true">
+          <div id="dialogPanelBody"></div>
+          <input id="dialogEnabled" type="checkbox" />
+          <div id="dialogControls" class="hidden"></div>
+          <div id="dialogStyleButtons"></div>
+          <input id="dialogName" type="text" />
+          <textarea id="dialogText" rows="3"></textarea>
+          <input id="dialogPosition" type="range" min="10" max="100" />
+          <div id="dialogPosButtons"></div>
+          <div id="dialogPosRangeWrap"></div>
+          <span id="dialogPosLabel"></span>
         </div>
       </div>
 
@@ -2505,7 +2491,7 @@ function applySelectedPreset() {
   }
   state.effects = { ...next.effects };
   state.adjustments = { ...next.adjustments };
-  state.dialogEnabled = next.dialogEnabled;
+  state.dialogEnabled = false;
   state.dialogStyle = next.dialogStyle;
   state.dialogPosition = next.dialogPosition;
   state.pngScale = next.pngScale;
@@ -2912,30 +2898,15 @@ function renderControls() {
 }
 
 function renderMobilePanels() {
-  const useTabs = state.isMobile;
-
-  runtime.refs.mobileTabs.classList.toggle('hidden', !useTabs);
-
-  if (!useTabs) {
-    runtime.refs.pixelPanel.classList.remove('hidden');
-    runtime.refs.palettePanel.classList.remove('hidden');
-    runtime.refs.dialogPanel.classList.remove('hidden');
-    return;
-  }
-
-  const tab = state.mobileTab;
-  runtime.refs.mobileTabPixel.classList.toggle('active', tab === 'pixel');
-  runtime.refs.mobileTabPalette.classList.toggle('active', tab === 'palette');
-  runtime.refs.mobileTabDialog.classList.toggle('active', tab === 'dialog');
-
-  runtime.refs.pixelPanel.classList.toggle('hidden', tab !== 'pixel');
-  runtime.refs.palettePanel.classList.toggle('hidden', tab !== 'palette');
-  runtime.refs.dialogPanel.classList.toggle('hidden', tab !== 'dialog');
+  runtime.refs.mobileTabs.classList.add('hidden');
+  runtime.refs.pixelPanel.classList.remove('hidden');
+  runtime.refs.palettePanel.classList.remove('hidden');
+  runtime.refs.dialogPanel.classList.add('hidden');
 }
 
 function renderStatus() {
   const dict = t();
-  runtime.refs.statusMain.textContent = state.sourceImage ? dict.ready : dict.dropMsg;
+  runtime.refs.statusMain.textContent = state.sourceImage ? dict.ready : '';
   runtime.refs.statusSize.textContent = `${state.pixelSize}px`;
   const palette = getPaletteByKey(state.paletteKey) || getPaletteByKey('sora');
   runtime.refs.statusPalette.textContent = palette?.name || 'Classic';
@@ -3105,23 +3076,6 @@ function buildWin95OverlayNode() {
 function renderDialogOverlay() {
   const container = runtime.refs.overlayContainer;
   container.innerHTML = '';
-
-  if (!state.dialogEnabled || !state.sourceImage || !state.dialogText) {
-    return;
-  }
-
-  const theme = DIALOG_THEMES[state.dialogStyle];
-  let node;
-
-  if (theme?.isWin95) {
-    node = buildWin95OverlayNode();
-  } else if (theme?.isTerminal) {
-    node = buildTerminalOverlayNode();
-  } else {
-    node = buildRpgOverlayNode(theme);
-  }
-
-  container.appendChild(node);
 }
 
 function renderGhost() {
@@ -3144,7 +3098,7 @@ function syncPreviewState() {
   runtime.refs.emptyState.classList.toggle('hidden', hasImage);
   runtime.refs.editBtn.classList.toggle('hidden', !hasImage || !runtime.gridData);
 
-  const canVideo = state.dialogEnabled && state.dialogText;
+  const canVideo = false;
   runtime.refs.videoBtn.classList.toggle('hidden', !hasImage || !canVideo);
   runtime.refs.downloadBtn.classList.toggle('hidden', !hasImage);
   runtime.refs.exportScaleRow.classList.toggle('hidden', !hasImage);
@@ -4543,20 +4497,9 @@ function bindEvents() {
   });
 
   r.dialogEnabled.addEventListener('change', (event) => {
-    state.dialogEnabled = event.target.checked;
-    playToggle(state.dialogEnabled);
-
-    if (state.dialogEnabled) {
-      triggerGhost('dialog');
-      resetTyping();
-    } else {
-      if (runtime.typingTimer) {
-        clearInterval(runtime.typingTimer);
-        runtime.typingTimer = null;
-      }
-      state.typedChars = 0;
-    }
-
+    event.preventDefault();
+    state.dialogEnabled = false;
+    event.target.checked = false;
     renderControls();
     renderDialogOverlay();
     syncPreviewState();

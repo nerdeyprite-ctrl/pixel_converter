@@ -193,12 +193,40 @@ body::after {
   display: none;
 }
 
-.content-row {
-  display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+.workspace-stack {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 14px;
+  padding: 12px;
+}
+
+.tool-panels-row {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: 12px;
   align-items: start;
+}
+
+.preview-panel-main .panel-body {
+  padding: 10px 10px 0;
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+}
+
+.preview-actions .btn-block {
+  width: auto;
+  flex: 1 1 190px;
+}
+
+.preview-actions .export-scale-row {
+  flex: 1 1 220px;
+  min-width: 220px;
 }
 
 .panel {
@@ -227,13 +255,6 @@ body::after {
   border-radius: 0 0 12px 12px;
 }
 
-.controls-col {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .mobile-tabs {
   display: none;
   margin-bottom: -1px;
@@ -254,18 +275,11 @@ body::after {
   box-shadow: var(--btn-down);
 }
 
-.preview-col {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .preview-drop {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 460px;
+  min-height: min(62vh, 680px);
   position: relative;
   overflow: hidden;
   cursor: pointer;
@@ -940,20 +954,14 @@ input[type="checkbox"]:checked::after {
     align-items: flex-start;
   }
 
-  .content-row {
+  .workspace-stack {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .tool-panels-row {
     grid-template-columns: 1fr;
-  }
-
-  .content-row {
-    gap: 6px;
-    padding: 6px;
-  }
-
-  .controls-col,
-  .preview-col {
-    width: 100%;
-    min-width: 0;
-    order: unset;
+    gap: 8px;
   }
 
   .mobile-tabs {
@@ -967,6 +975,21 @@ input[type="checkbox"]:checked::after {
 
   .panel-body {
     padding: 6px;
+  }
+
+  .preview-panel-main .panel-body {
+    padding: 6px 6px 0;
+  }
+
+  .preview-actions {
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .preview-actions .btn-block,
+  .preview-actions .export-scale-row {
+    flex: 1 1 100%;
+    min-width: 0;
   }
 
   .editor-body {
