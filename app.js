@@ -1912,23 +1912,63 @@ function createAudioContext() {
   return runtime.audioContext;
 }
 
+function playBubbleTone(
+  ctx,
+  {
+    startFreq,
+    endFreq,
+    duration = 0.12,
+    volume = 0.06,
+    offset = 0,
+    wave = 'sine',
+    sparkle = true,
+  },
+) {
+  const startAt = ctx.currentTime + offset;
+  const stopAt = startAt + duration;
+
+  const mainOsc = ctx.createOscillator();
+  const mainGain = ctx.createGain();
+  mainOsc.type = wave;
+  mainOsc.frequency.setValueAtTime(startFreq, startAt);
+  mainOsc.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq), stopAt);
+  mainGain.gain.setValueAtTime(0.0001, startAt);
+  mainGain.gain.exponentialRampToValueAtTime(volume, startAt + 0.01);
+  mainGain.gain.exponentialRampToValueAtTime(0.0001, stopAt);
+  mainOsc.connect(mainGain);
+  mainGain.connect(ctx.destination);
+  mainOsc.start(startAt);
+  mainOsc.stop(stopAt + 0.005);
+
+  if (!sparkle) return;
+
+  const subOsc = ctx.createOscillator();
+  const subGain = ctx.createGain();
+  subOsc.type = 'triangle';
+  subOsc.frequency.setValueAtTime(startFreq * 1.6, startAt);
+  subOsc.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq * 1.4), stopAt);
+  subGain.gain.setValueAtTime(0.0001, startAt);
+  subGain.gain.exponentialRampToValueAtTime(volume * 0.35, startAt + 0.008);
+  subGain.gain.exponentialRampToValueAtTime(0.0001, stopAt);
+  subOsc.connect(subGain);
+  subGain.connect(ctx.destination);
+  subOsc.start(startAt);
+  subOsc.stop(stopAt + 0.005);
+}
+
 function playClick() {
   if (!state.soundEnabled) return;
   const ctx = createAudioContext();
   if (!ctx) return;
   try {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(500, ctx.currentTime);
-    osc.frequency.setValueAtTime(800, ctx.currentTime + 0.05);
-    osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.15);
+    if (ctx.state === 'suspended') ctx.resume();
+    playBubbleTone(ctx, {
+      startFreq: 760,
+      endFreq: 1380,
+      duration: 0.11,
+      volume: 0.05,
+      wave: 'sine',
+    });
   } catch (err) {
     // ignore audio errors
   }
@@ -1939,24 +1979,41 @@ function playToggle(on) {
   const ctx = createAudioContext();
   if (!ctx) return;
   try {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'square';
+    if (ctx.state === 'suspended') ctx.resume();
     if (on) {
-      osc.frequency.setValueAtTime(500, ctx.currentTime);
-      osc.frequency.setValueAtTime(800, ctx.currentTime + 0.05);
-      osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.1);
+      playBubbleTone(ctx, {
+        startFreq: 650,
+        endFreq: 1120,
+        duration: 0.1,
+        volume: 0.045,
+        wave: 'sine',
+      });
+      playBubbleTone(ctx, {
+        startFreq: 900,
+        endFreq: 1580,
+        duration: 0.1,
+        volume: 0.04,
+        offset: 0.065,
+        wave: 'triangle',
+      });
     } else {
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
-      osc.frequency.setValueAtTime(500, ctx.currentTime + 0.05);
-      osc.frequency.setValueAtTime(300, ctx.currentTime + 0.1);
+      playBubbleTone(ctx, {
+        startFreq: 1100,
+        endFreq: 760,
+        duration: 0.1,
+        volume: 0.04,
+        wave: 'triangle',
+      });
+      playBubbleTone(ctx, {
+        startFreq: 820,
+        endFreq: 540,
+        duration: 0.09,
+        volume: 0.032,
+        offset: 0.06,
+        wave: 'sine',
+        sparkle: false,
+      });
     }
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.15);
   } catch (err) {
     // ignore audio errors
   }
