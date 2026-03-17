@@ -4,8 +4,8 @@
   "description": "nerpu's pixel converter - minimal pastel retro pixel conversion tool.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fff6fd",
-  "theme_color": "#f6cae5",
+  "background_color": "#fffaf7",
+  "theme_color": "#ffd9ea",
   "lang": "en",
   "scope": "/",
   "icons": [
